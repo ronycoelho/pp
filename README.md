@@ -1,4 +1,4 @@
-- [Dados abertos Câmara](https://dadosabertos.camara.leg.br/)
+- [Dados abertos Câmara](https://dadosabertos.camara.leg.br/swagger/api.html)
 
 - [Quem são os deputados](https://www.camara.leg.br/deputados/quem-sao)
 
