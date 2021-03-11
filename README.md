@@ -6,3 +6,5 @@
 
 - [Radar do Congresso](https://radar.congressoemfoco.com.br/governismo/camara)
 
+- [Partido Parlamentar](http://transferenciasabertas.planejamento.gov.br/QvAJAXZfc/opendoc.htm?document=painelcidadao.qvw&lang=en-US&host=QVS%40srvbsaiasprd01&anonymous=true)
+
