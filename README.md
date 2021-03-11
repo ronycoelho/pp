@@ -6,5 +6,11 @@
 
 - [Radar do Congresso](https://radar.congressoemfoco.com.br/governismo/camara)
 
-- [Partido Parlamentar](http://transferenciasabertas.planejamento.gov.br/QvAJAXZfc/opendoc.htm?document=painelcidadao.qvw&lang=en-US&host=QVS%40srvbsaiasprd01&anonymous=true)
+- [Plataforma Parlamentar - ME](http://transferenciasabertas.planejamento.gov.br/QvAJAXZfc/opendoc.htm?document=painelcidadao.qvw&lang=en-US&host=QVS%40srvbsaiasprd01&anonymous=true)
+
+- [Perfil Parlamentar - Parlametria](https://perfil.parlametria.org/)
+
+- [Elas no congresso](https://www.elasnocongresso.com.br/ranking)
+
+
 
