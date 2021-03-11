@@ -1,0 +1,133 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+
+```{r}
+dados_pref_eleitos_multas <- read_excel("C:/Users/User/Downloads/dados.pref.eleitos.multas (1).xlsx", 
+                                           sheet = "multas.pref.eleitos(todos)")
+```
+
+
+```{r}
+dados <- dados_pref_eleitos_multas
+```
+
+```{r}
+dados.estados <- dados %>% 
+  filter(UF %in% c("AM", "PA", "MT"))
+
+dados.estados %>% 
+  count(UF)
+```
+
+```{r}
+cpfs <- dados %>%
+  count(`CPF(2)`, sort = T) %>% 
+  pull(`CPF(2)`)
+```
+
+```{r}
+all.pref.eleitos <- read_excel("C:/Users/User/Downloads/dados.pref.eleitos.multas (1).xlsx",      
+                               sheet = "infos.completares.pref.eleitos")
+```
+
+
+```{r}
+cpfs.pref.estados <- all.pref.eleitos %>%
+  filter(UF %in% c("AM", "PA", "MT")) %>%
+  pull(CPF)
+  
+```
+
+
+```{r}
+all.pref.eleitos %>%
+  filter(UF %in% c("AM", "PA", "MT")) %>% 
+  count(UF)
+```
+
+```{r}
+pref.eleitos.multados.estados <- dados %>% 
+  filter(`CPF(2)` %in% cpfs.pref.estados)
+```
+
+```{r}
+cpf.pref.el.multados <- pref.eleitos.multados.estados %>% 
+  count(`CPF(2)`) %>% 
+  pull(`CPF(2)`)
+```
+
+```{r}
+infos.pref.multados <- all.pref.eleitos %>% 
+  filter(CPF %in% cpf.pref.el.multados)
+```
+
+```{r}
+infos.pref.multados %>% 
+  count(UF)
+```
+
+```{r}
+pref.eleitos.estados <- all.pref.eleitos %>%
+  filter(UF %in% c("AM", "PA", "MT"))
+```
+
+```{r}
+pref.eleitos.estados %>%
+  filter(Ocupação %in% c("PESCADOR", "PRODUTOR AGROPECUÁRIO", "PECUARISTA", "AGRICULTOR")) %>% 
+  count(Ocupação, UF, sort = T)
+
+pref.eleitos.estados %>% 
+  filter(UF == "AM") %>% 
+  filter(Ocupação %in% c("PESCADOR", "PRODUTOR AGROPECUÁRIO", "PECUARISTA", "AGRICULTOR"))
+
+pref.eleitos.estados %>% 
+  filter(UF == "MT") %>% 
+  filter(Ocupação %in% c("PESCADOR", "PRODUTOR AGROPECUÁRIO", "PECUARISTA", "AGRICULTOR")) %>% 
+  count(Ocupação, sort = T)
+
+pref.eleitos.estados %>% 
+  filter(UF == "PA") %>% 
+  filter(Ocupação %in% c("PESCADOR", "PRODUTOR AGROPECUÁRIO", "PECUARISTA", "AGRICULTOR")) %>% 
+   count(Ocupação, sort = T)
+```
+
+```{r}
+infos.pref.multados %>%
+  janitor::clean_names() -> infos.pref.multados
+
+multados.am <- infos.pref.multados %>%   
+  filter(uf == "AM") %>%
+  mutate(my_colum = paste0(nome_de_urna, " (", partido,") - ", ocupacao, ", ", municipio)) %>% 
+  select(my_colum) %>% View()
+
+
+multados.mt <- infos.pref.multados %>%   
+  filter(uf == "MT") %>%
+  mutate(my_colum = paste0(nome_de_urna, " (", partido,") - ", ocupacao, ", ", municipio)) %>% 
+  select(my_colum)
+
+multados.pa <- infos.pref.multados %>%   
+  filter(uf == "PA") %>%
+  mutate(my_colum = paste0(nome_de_urna, " (", partido,") - ", ocupacao, ", ", municipio)) %>% 
+  select(my_colum)
+
+
+
+write.csv2(multados.pa, "multados.pa.csv", fileEncoding = "ISO-8859-1")  
+```
+
+```{r}
+
+getwd()
+write.csv(fpa.all, "fpa.csv", fileEncoding = "ISO-8859-1")
+```
+

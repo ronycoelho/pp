@@ -1,0 +1,380 @@
+---
+title: "Untitled"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(scales)
+```
+
+```{r}
+#d <- read_csv("https://mapaosc.ipea.gov.br/download/area_subarea.csv")
+
+original <- rio::import("https://mapaosc.ipea.gov.br/download/area_subarea.csv")
+```
+
+```{r}
+original <- original %>% 
+  clean_names()
+
+original %>% 
+  head() %>% 
+  glimpse()
+```
+
+# dicionário de variáveis numerado
+```{r}
+#dic <- paste0("var", 1:length(original), ": ", names(original))
+
+#names(d) <- paste0("var", 1:length(d))
+```
+
+# organizações nos três estados
+```{r}
+# São 445.616 organizaç~eos
+org.estados <- original %>% #head(1000) %>% 
+  filter(eduf_cd_uf %in% c(13,15,51)) 
+
+### Estados
+org.estados %>%
+  count(eduf_sg_uf, sort = T) %>% 
+  janitor::adorn_totals() %>% 
+  mutate(n = number(n, big.mark = ".")) %>% 
+  kableExtra::kbl()
+
+### Area de atuação
+org.estados %>%#glimpse() 
+  select(1, 13:23) %>% 
+  pivot_longer(cols = habita_a_a_o:outras_atividades_associativas)  %>%
+  filter(value == 1) %>% 
+  count(name, sort = T) %>% 
+  distinct() %>%  
+  janitor::adorn_totals() %>% 
+  mutate(n = number(n, big.mark = ".")) %>% 
+  kableExtra::kbl()
+```
+
+# seleções - inclusão
+```{r}
+# São 
+# area ou sub area meio ambiente
+meio.area.sub <- org.estados %>%   
+  select(1, contains("meio")) %>% 
+  pivot_longer(cols = -1) %>%
+  filter(value == 1) %>%
+  distinct() %>% 
+  pull(id_osc) 
+
+# 2292
+criterio1 <- org.estados %>% 
+  filter(id_osc %in% meio.area.sub)
+
+# 549
+# ambiente na razão social
+criterio2 <- org.estados %>% 
+  filter(str_detect(tx_razao_social_osc, "AMBIENT"))
+
+# 215
+# agrop na razão social
+criterio3 <- org.estados %>% 
+  filter(str_detect(tx_razao_social_osc, "AGROP"))
+```
+
+# juntar inclusões
+```{r}
+join1 <- bind_rows(criterio1, criterio2)
+
+# 3055 organizações
+all_criterios <- bind_rows(join1, criterio3)
+```
+
+# seleções exclusões
+```{r}
+
+# 2.852 organizações distintas
+all_criterios <- all_criterios %>% 
+  distinct()
+
+
+all_criterios <- all_criterios %>% 
+  purrr::map_df(~descr::fromUTF8(.x))
+
+# selecionar atividade economica
+atividades <- all_criterios %>% 
+  count(tx_nome_classe_atividade_economica, sort = T) %>% 
+  pull(tx_nome_classe_atividade_economica)
+
+atividades_selecionadas <- atividades[c(1:2, 4:7, 36)]
+
+# all_criterios %>% 
+#   filter(tx_nome_classe_atividade_economica == atividades[6]) %>% View()
+
+# excluídas 92 organizações
+selecionadas2 <- all_criterios %>% 
+  filter(tx_nome_classe_atividade_economica %in% atividades_selecionadas)
+
+# exkcluídas 20 orgs
+selecionadas2 <- selecionadas2 %>% 
+  filter(str_detect(tx_razao_social_osc, "COMERCIAL", negate = T))
+
+# exkcluídas 21 orgs
+selecionadas2 <- selecionadas2 %>% 
+  filter(str_detect(tx_razao_social_osc, "REVEND", negate = T))
+
+# excluidas 8
+selecionadas2 <- selecionadas2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ANIMAL", negate = T))
+
+# excluídas BAIRRO 757
+selecionadas2 <- selecionadas2 %>% 
+  filter(str_detect(tx_razao_social_osc, "BAIRRO", negate = T))
+
+# excluídas 102
+selecionadas2 <- selecionadas2 %>% 
+  filter(str_detect(tx_razao_social_osc, "RESIDENCIAL", negate = T))
+
+
+# excluidas mais ou menos 510
+moradores_agro <- selecionadas2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOCIACAO DOS M")) %>% 
+  filter(str_detect(tx_razao_social_osc, "AGRO"))
+
+selecionadas2 <- selecionadas2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOCIACAO DOS M", negate = T)) %>% 
+  bind_rows(moradores_agro)
+
+
+# excluídas 403
+moradores_agro <- selecionadas2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOCIACAO DE M")) %>% 
+  filter(str_detect(tx_razao_social_osc, "AGRO"))
+
+selecionadas2 <- selecionadas2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOCIACAO DE M", negate = T)) %>% 
+  bind_rows(moradores_agro)
+```
+
+
+```{r}
+base.final <- selecionadas2
+```
+
+
+```{r}
+base.final %>% 
+  #org.estados %>%   
+  select(1, contains("meio")) %>% 
+  pivot_longer(cols = -1) %>%
+  filter(value == 1) %>%
+  distinct()
+```
+
+
+```{r}
+base.final %>% #View()
+  count(uf = eduf_sg_uf, sort = T, name = "qt") %>%
+  janitor::adorn_totals()
+  
+#write.csv2(base.final, "mapa_ipea_clua.csv", fileEncoding = "ISO-8859-1")
+
+#2
+base.final %>% 
+  count(tx_nome_classe_atividade_economica, sort = T)
+
+#3 Area de atuação
+area <- base.final %>% #glimpse()
+  select(id_osc, habita_a_a_o:outras_atividades_associativas) %>% 
+  pivot_longer(cols = -id_osc) %>% 
+  filter(value == 1) %>%
+  filter(str_detect(name, "meio")) %>% 
+  #count(name, sort = T) 
+  pull(id_osc)
+
+# 4 subarea
+sub <- base.final %>% #glimpse()
+  select(id_osc, hab_sub_habita_a_a_o:outras_sub_associa_a_ames_de_atividades_n_a_o_especificadas_anter) %>% 
+  pivot_longer(cols = -id_osc) %>% 
+  filter(value == 1) %>%
+  filter(str_detect(name, "meio")) %>% 
+  #count(name, sort = T) 
+  pull(id_osc)
+
+###
+id.nome <- base.final %>%
+  select(id_osc, tx_razao_social_osc) %>% 
+  distinct()
+  
+id <- unique(base.final$id_osc)
+
+infos <- base.final %>% #glimpse()
+  select(id_osc,tx_razao_social_osc, tx_nome_fantasia_osc, eduf_sg_uf)
+```
+
+```{r}
+base.final2 <- base.final %>% 
+  filter(id_osc %in% sub )
+
+base.final3 <- base.final %>% 
+  filter(id_osc %in% area)
+
+
+base.final2 <- bind_rows(base.final2, base.final3)
+
+base.final2 <- base.final2 %>% 
+  distinct()
+
+base.final2 %>% 
+  count(eduf_sg_uf) %>% 
+  janitor::adorn_totals()
+
+
+# Exclusões
+# excluídos 77
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOCIACAO COM", negate = T))
+
+
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "COMERCIAL", negate = T))
+
+# exkcluídas 21 orgs
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "REVEND", negate = T))
+
+# excluidas 8
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ANIMAL", negate = T))
+
+# excluídas BAIRRO 757
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "BAIRRO", negate = T))
+
+# excluídas 102
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "RESIDENCIAL", negate = T))
+
+
+# excluidas mais ou menos 510
+moradores_agro <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOCIACAO DOS M")) %>% 
+  filter(str_detect(tx_razao_social_osc, "AGRO"))
+
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOCIACAO DOS M", negate = T)) %>% 
+  bind_rows(moradores_agro)
+
+
+# excluídas 403
+moradores_agro <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOCIACAO DE M")) %>% 
+  filter(str_detect(tx_razao_social_osc, "AGRO"))
+
+
+# Final 502 
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOCIACAO DE M", negate = T)) %>% 
+  bind_rows(moradores_agro)
+
+
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASS DOS", negate = T))
+
+base.final2 <- base.final2 %>% 
+  filter(str_detect(tx_razao_social_osc, "ASSOC COMUNIT", negate = T))
+
+
+
+```
+
+# Final 502 casos 
+```{r}
+excluir.manualmente <- c("400033", "1085208", "962716", "990635", "808799", "1131608", "1123338","814432",
+"1066786", "1130124", "768567", "401080", "1009833", 
+)
+
+
+base.final2 %>% 
+```
+
+```{r}
+write.csv2(base.final2, "base.final.29janeiro.csv", fileEncoding = "ISO-8859-1")
+```
+
+
+
+####
+# Recursos
+```{r}
+recursos <- rio::import("https://mapaosc.ipea.gov.br/download/recursos.csv")
+
+recursos %>% head() %>% glimpse()
+
+id <- unique(base.final$id_osc)
+
+orgs.recursos <- orgs.recursos %>% 
+  purrr::map_df(~descr::fromUTF8(.x))
+
+orgs.recursos <- recursos %>% 
+  filter(id_osc %in% id)
+
+#write.csv2(orgs.recursos, "orgs.recursos.csv", fileEncoding = "ISO-8859-1")
+
+orgs.recursos %>% 
+  count(tx_razao_social_osc, tx_nome_fonte_recursos_osc)
+```
+
+# certificados
+```{r}
+cert <- rio::import("https://mapaosc.ipea.gov.br/download/certificado_lista.csv")
+
+cert %>% head() %>% glimpse()
+
+cert <- cert %>% 
+  purrr::map_df(~descr::fromUTF8(.x))
+
+
+orgs.cert <- cert %>%  
+  filter(id_osc %in% id)
+
+orgs.cert <- orgs.cert %>% 
+  inner_join(id.nome, by = "id_osc")
+
+write.csv2(orgs.cert, "orgs.cert.csv", fileEncoding = "ISO-8859-1")
+
+# 5
+orgs.cert%>% 
+  count(tx_nome_certificado, sort = T)
+```
+
+# projetos
+```{r}
+proj <- rio::import("https://mapaosc.ipea.gov.br/download/lista_projetos.csv")
+
+orgs.proj <- proj %>% 
+  filter(id_osc %in% id)
+
+
+orgs.proj <- orgs.proj %>% 
+purrr::map_df(~descr::fromUTF8(.x))
+
+orgs.proj %>% glimpse()
+
+# 24
+unique(orgs.proj$id_osc)
+
+orgs.proj <- orgs.proj %>% 
+  inner_join(id.nome, by = "id_osc") 
+
+write.csv2(orgs.proj, "orgs.proj.csv", fileEncoding = "ISO-8859-1")
+
+orgs.proj %>% 
+  count(tx_razao_social_osc, tx_nome_projeto, tx_link_projeto) 
+```

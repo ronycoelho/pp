@@ -1,0 +1,63 @@
+---
+title: "clua_fpa"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rvest)
+```
+
+```{r}
+link <- "https://fpagropecuaria.org.br/todos-os-membros/"
+
+fpa <- read_html(link) %>% 
+  rvest::html_table()
+
+fpa.senadores <- fpa[[1]]
+fpa.dep <- fpa[[2]]
+  
+```
+
+```{r}
+fpa.senadores %>%
+  janitor::row_to_names(1) -> fpa.senadores
+
+fpa.dep %>%
+  janitor::row_to_names(1) -> fpa.dep
+
+```
+
+
+```{r}
+fpa.senadores %>% 
+  mutate(parlamentar = "Senador/a") -> fpa.senadores
+
+fpa.dep %>% 
+  mutate(parlamentar = "Deputado/a") -> fpa.dep
+```
+
+
+```{r}
+fpa.dep %>% glimpse()
+fpa.senadores %>% glimpse()
+
+fpa.senadores %>% 
+  rename(Nome = Senadores) -> fpa.senadores
+
+fpa.all <- bind_rows(fpa.dep, fpa.senadores)
+```
+
+
+```{r}
+fpa.estados <- fpa.all %>% 
+  filter(UF %in% c("AM", "MT", "PA"))
+
+fpa.estados %>% View()
+    count(UF, parlamentar)
+```

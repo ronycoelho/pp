@@ -1,0 +1,184 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(igraph)
+library(tidyverse)
+```
+
+
+```{r}
+demo(community)
+
+plot(G)
+```
+
+```{r}
+grapfh <- make_graph("Dodecahedron")
+
+
+plot(grapfh)
+```
+
+
+```{r}
+g1 <- graph(edges = c(1,2,3,4, 2,3, 4,1, 3,1,2,3))
+plot(g1)
+
+
+r1 <- graph(edges = c("A\nteste","B","B","C","C","D"))
+
+
+```
+
+
+```{r}
+
+r1 <- graph_from_literal(1-2,2-3,1-4)
+
+plot(r1)
+
+
+
+V(r1)$name
+```
+
+
+```{r}
+V(g)$name
+
+
+plot(g)
+
+vertex_attr(g)
+
+dt <- as_long_data_frame(g)
+
+d<- graph_from_data_frame(dt)
+
+
+vertex_attr(d)
+
+plot(d, vertex.color = V(d))
+
+d[2,]
+
+V(d)$name
+```
+
+
+```{r}
+dt1 <- dt %>%
+  select(from = tx_razao_social_osc, to = tx_nome_fonte_recursos_osc) 
+
+dt1 <- dt1 %>% 
+  distinct()
+
+plotgraph <- graph_from_data_frame(dt1, directed = F)
+
+X11()  
+tkplot(plotgraph, layout = layout_with_kk, 
+     vertex.color = "lightgray",
+     vertex.shape = "none",
+     vertex.size = 5,
+    # [#xlim = c(0,.5),
+     rescale = F)
+
+dt %>% 
+  purrr::map_df(~descr::fromUTF8(.x))
+```
+
+## Novo
+```{r}
+recursos <- read_csv2("orgs.recursos.csv",  locale(encoding = "ISO-8859-1"), col_names = T, col_types = NULL)
+
+
+infos <- read_csv2("infos.csv",  locale(encoding = "ISO-8859-1"), col_names = T, col_types = NULL)
+
+infos <- infos %>% #View() %>% 
+mutate(tx_nome_fantasia_osc = ifelse(is.na(tx_nome_fantasia_osc), tx_razao_social_osc, tx_nome_fantasia_osc ),
+       tx_nome_fantasia_osc = str_replace_all(tx_nome_fantasia_osc, "INSTITUTO", "INST."),
+       tx_nome_fantasia_osc = str_replace_all(tx_nome_fantasia_osc, "ASSOCIACAO", "A.")) #%>% View()
+```
+
+
+```{r}
+ids <- unique(recursos$id_osc)
+
+nodes <- infos %>% 
+  filter(id_osc %in% ids) %>% 
+  select(id_osc, eduf_sg_uf)
+
+nodes <- nodes %>% #head() %>%  
+  mutate(color = case_when(eduf_sg_uf == "AM" ~ "red",
+                           eduf_sg_uf == "PA" ~ "blue",
+                           eduf_sg_uf == "MT" ~ "gray"))
+
+newnodes <- data.frame(id_osc = unique(recursos1$to), 
+           eduf_sg_uf = rep(NA, length(unique(recursos1$to) )),
+           color = "orange")
+
+
+newnodes <- nodes %>% 
+  mutate(id_osc = as.character(id_osc)) %>% 
+  bind_rows(newnodes)
+```
+
+
+```{r}
+recursos1 <- recursos %>%   
+  inner_join(infos, by = "id_osc") %>% 
+  select(id_osc, tx_razao_social_osc.y, tx_nome_fantasia_osc, tx_nome_fonte_recursos_osc)
+
+recursos1 <- recursos1 %>%
+  select(from = id_osc, 
+         to = tx_nome_fonte_recursos_osc, everything()) %>% 
+  mutate(tx_nome_fantasia_osc = str_to_lower(tx_nome_fantasia_osc)) %>% 
+  distinct()
+```
+
+
+```{r}
+net <- graph_from_data_frame(d = recursos1, vertices = newnodes, directed =F)
+
+library(RColorBrewer)
+coul  <- brewer.pal(4, "Set1")
+
+#https://www.r-graph-gallery.com/249-igraph-network-map-a-color.html
+my_color <- coul[as.numeric(as.factor(V(net)$eduf_sg_uf))]
+```
+
+```{r}
+plot.igraph(net, vertex.color=alpha(my_color, .1),
+            vertex.label.color =my_color,
+            vertex.frame.color = my_color,
+            rescale = c(1,1))
+
+# legend(x=.9, y=1, legend=levels(as.factor(V(net)$eduf_sg_uf)),
+#        col = coul, bty = "n",
+#        text.col=coul , horiz = F)
+# 
+
+legend(x=.95, y=1, legend=levels(as.factor(V(net)$eduf_sg_uf))  , 
+       col = alpha(coul, .1) , bty = "n", pch=20 , 
+       pt.cex = 10, cex = 1, 
+       text.col=coul , 
+       horiz = FALSE, 
+       inset = c(1, 1))
+
+
+```
+
+```{r}
+library(networkD3    )
+```
+
+```{r}
+forceNetwork(Links = recursos1, Nodes = newnodes,
+             Target = "to", Source = "from", NodeID = "id_osc",
+             Group = )
+```
+
