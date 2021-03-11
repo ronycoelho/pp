@@ -1,0 +1,475 @@
+---
+title: "Untitled"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(electionsBR)
+library(tidyverse)
+options(scipen = 999)
+```
+
+#
+```{r}
+local.cand.2016 <- electionsBR::candidate_local(year = 2016)
+local.cand.2012 <- electionsBR::candidate_local(year = 2012)
+```
+
+# 
+```{r}
+names.2012 <- names(local.cand.2012)
+names.2016 <- names(local.cand.2016)
+
+setdiff(names.2016, names.2012)
+
+selecionados.2016 <- local.cand.2016 %>% 
+  select(any_of(names.2012))
+
+names.selecionados <- names(selecionados.2016)
+
+selecionados.2012 <- local.cand.2012 %>%   
+  select(any_of(names.selecionados))
+
+dt.2012.2016 <- bind_rows(selecionados.2016, selecionados.2012)
+```
+
+```{r}
+#save.image("Dados_2012_2016.RData")
+load("Dados_2012_2016.RData")
+```
+
+```{r}
+dt.2012.2016 <- dt.2012.2016 %>% 
+  clean_names()
+
+temp.1 <- dt.2012.2016 %>%
+  select(ano_eleicao, sg_uf = sigla_uf, sg_ue = sigla_ue, nm_ue = descricao_ue,
+         ds_cargo = descricao_cargo, nm_candidato = nome_candidato, 
+         sq_candidato = sequencial_candidato, nr_candidato = numero_candidato,
+         nr_cpf_candidato = cpf_candidato, nr_titulo_eleitoral_candidato = num_titulo_eleitoral_candidato, 
+         nm_urna_candidato = nome_urna_candidato,
+         sg_partido = sigla_partido, ds_ocupacao = descricao_ocupacao, 
+         dt_nascimento = data_nascimento,  ds_genero = descricao_sexo,
+         ds_grau_instrucao = descricao_grau_instrucao,
+         ds_estado_civil = descricao_estado_civil, nm_email = email_candidato,
+         ds_situacao_candidato_pleito = desc_sit_tot_turno )
+
+
+all_elections <- brasil %>% 
+  mutate(ano_eleicao = 2020) %>% 
+  select(one_of(names(temp.1))) %>% 
+  bind_rows(temp.1)
+
+rm(temp.1)
+
+all_elections %>% 
+  count(ano_eleicao)
+```
+
+
+```{r}
+# Por ocupacao
+ocup.militares <- c("POLICIAL CIVIL", "POLICIAL MILITAR", "MILITAR REFORMADO", 
+                      "MEMBRO DAS FORÇAS ARMADAS", "BOMBEIRO MILITAR")
+
+all_militares_by_ocupation <- all_elections %>% 
+    filter(ds_ocupacao %in% ocup.militares) %>% 
+    mutate(ocupacao_militar = "Sim") %>% 
+    relocate(ocupacao_militar, .after = ds_ocupacao)
+
+# Por patente
+all.patente <- all_elections %>% 
+  filter(str_detect(nm_urna_candidato, paste(patentes_selecionadas, collapse = "|")))
+
+
+all.patente <- all.patente %>% 
+  filter(!ds_ocupacao %in% ocup.militares) %>% 
+  mutate(patente = str_split_fixed(nm_urna_candidato, " ", 2)[,1]) %>%
+  filter(patente %in% patentes_selecionadas) %>% 
+  mutate(ocupacao_militar = "Não") %>% 
+  relocate(ocupacao_militar, .after = ds_ocupacao) %>% 
+  select(-patente)
+
+# # Ver se há diferenças 
+# temp1 <- names(all.patente)
+# temp2 <- names(all_militares_by_ocupation)
+# setdiff(temp1, temp2)
+# setdiff(temp2, temp1)
+
+all_militares <- bind_rows(all_militares_by_ocupation, all.patente)
+```
+
+```{r}
+write.csv2(all_militares, "all_militares.csv", fileEncoding = "ISO-8859-1")
+```
+
+
+```{r}
+# 2020
+donut.2020 <- data.frame(candidaturas = c("Cand. Policiais", "Cand. não policiais"), 
+                                   qt = c(nrow(base.geral.militares), nrow(brasil)-nrow(base.geral.militares)))
+
+donut.2020 <- donut.2020 %>% 
+  mutate(perc = round(prop.table(qt)*100,1),
+         perc_label = paste0(perc, "%\n", "(", number(qt, big.mark = "."), ")"))
+  
+# 2016
+militares_2016 <- all_militares %>% 
+  filter(ano_eleicao == 2016)
+
+cand.2016 <- all_elections %>% 
+  filter(ano_eleicao == 2016)
+
+donut.2016 <- data.frame(candidaturas = c("Cand. Policiais", "Cand. não policiais"), 
+                                   qt = c(nrow(militares_2016), nrow(cand.2016)-nrow(militares_2016)))
+
+donut.2016 <- donut.2016 %>% 
+  mutate(perc = round(prop.table(qt)*100,1),
+         perc_label = paste0(perc, "%\n", "(", number(qt, big.mark = "."), ")"))
+
+# 2012
+militares_2012 <- all_militares %>% 
+  filter(ano_eleicao == 2012)
+
+cand.2012 <- all_elections %>% 
+  filter(ano_eleicao == 2012)
+
+donut.2012 <- data.frame(candidaturas = c("Cand. Policiais", "Cand. não policiais"), 
+                                   qt = c(nrow(militares_2012), nrow(cand.2012)-nrow(militares_2012)))
+
+donut.2012 <- donut.2012 %>% 
+  mutate(perc = round(prop.table(qt)*100,1),
+         perc_label = paste0(perc, "%\n", "(", number(qt, big.mark = "."), ")"))
+```
+
+
+```{r}
+(plot.donut.2020 <- donut.2020 %>% 
+  ggplot(aes(x = 3, y = qt , fill = candidaturas)) +
+  geom_bar(stat = "identity", color = "white")+
+  coord_polar("y", start=1, direction = 1, clip = "off")+
+  xlim(1.5, 4) +
+  scale_fill_manual("", values = c(scale_color[1], scale_color[11]))+
+  geom_label(aes(label = perc_label),
+            x = c(4,-1), y = c(3, -10),
+            #position = position_stack(vjust = 0.48 ),
+            size = 3,
+            color = "white",
+            fontface= "bold")+
+  geom_text(x = 1.5,
+            y = 2,
+            label = "2020",
+            size = 4) +
+  theme_void()+
+  theme(legend.direction = "horizontal",
+        legend.position = "none",
+plot.margin = unit(c(0,0,0,0), "cm"),
+                plot.title = element_text(hjust = .3),
+        plot.subtitle = element_text(hjust = .3)))
+
+
+(plot.donut.2016 <- donut.2016 %>% 
+  ggplot(aes(x = 3, y = qt , fill = candidaturas)) +
+  geom_bar(stat = "identity", color = "white")+
+  coord_polar("y", start=1, direction = 1, clip = "off")+
+  xlim(1.5, 4) +
+  scale_fill_manual("", values = c(scale_color[1], scale_color[11]))+
+  geom_label(aes(label = perc_label),
+             x = c(4,-1), y = c(3, -10),
+            #position = position_stack(vjust = 0.48 ),
+            size = 3,
+            color = "white",
+            fontface= "bold")+
+  geom_text(x = 1.5,
+            y = 2,
+            label = "2016",
+            size = 4) +
+  theme_void()+
+  theme(legend.direction = "horizontal",
+        legend.position = "none",
+        plot.margin = unit(c(0,0,0,0), "cm"),
+        plot.title = element_text(hjust = .3),
+        plot.subtitle = element_text(hjust = .3)))
+
+(plot.donut.2012 <- donut.2012 %>% 
+  ggplot(aes(x = 3, y = qt , fill = candidaturas)) +
+  geom_bar(stat = "identity", color = "white")+
+  coord_polar("y", start=1, direction = 1, clip = "off")+
+  xlim(1.5, 4) +
+  scale_fill_manual("", label = c("Não policiais", "Policiais"), 
+                    values = c(scale_color[1], scale_color[11]))+
+  geom_label(aes(label = perc_label),
+            x = c(4,-1), y = c(3, -10), 
+#           position = position_stack(vjust = 0.48 ),
+            color = "white",
+            size = 3,
+            show.legend = F,
+            fontface= "bold")+
+  geom_text(x = 1.5,
+            y = 2,
+            label = "2012",
+            size = 4) +
+  theme_void()+
+  theme(legend.direction = "horizontal",
+        legend.position = c(.5, 0 ),
+        plot.margin = unit(c(0,0,0,0), "cm"),
+        plot.title = element_text(hjust = .3),
+        plot.subtitle = element_text(hjust = .3)))
+```
+
+```{r}
+grid.perc.year <- plot.donut.2020 + plot.donut.2016 + plot.donut.2012 +
+  plot_annotation(theme = theme(
+                                
+                                plot.margin = unit(c(0,.5,1,.5), "cm")))
+```
+
+```{r}
+setwd("C:/rstats/soudapaz")
+Cairo::CairoSVG("grid.perc.year")
+print(grid.perc.year)     
+dev.off()
+```
+
+
+```{r}
+count <- all_militares %>% 
+  count(ano_eleicao)
+
+count <- count %>% 
+  mutate(perct = c(" ", round(count$n[2]/count$n[1]*100-100, 2), 
+                   round(count$n[3]/count$n[2]*100-100, 2))) %>%
+  mutate(label.1 = number(n, big.mark = "."),
+        label.2 = ifelse(perct < 0, paste0(perct, "%"), paste0("+", perct,  "%")))
+```
+
+```{r}
+dev.off()
+
+evoloucao1 <- count %>%
+  mutate(ano_eleicao = as.character(ano_eleicao)) %>% 
+  ggplot(aes(ano_eleicao, n))+
+  geom_col(width = .5, fill = scale_color[10])+
+  geom_point()+
+  geom_line(group = 1)+
+  geom_text(aes(label = label.1), vjust = -1)+
+  geom_text(aes(label = label.2, vjust = -3),
+            color = c("transparent", "red", "blue"))+
+  scale_y_continuous(limits = c(0, 9000), breaks = seq(0, 8000, 2000))+
+    coord_cartesian(clip = "off")+
+  theme(text = element_text(size = 10),
+        title = element_text(size = 10))+
+  labs(title = "Policiais")
+```
+
+```{r}
+count.2 <- all_elections %>% 
+  count(ano_eleicao)
+
+count.2 <- count.2 %>% 
+  mutate(perct = c(" ", round(count.2$n[2]/count.2$n[1]*100-100, 2), 
+                   round(count.2$n[3]/count.2$n[2]*100-100, 2))) %>%
+  mutate(label.1 = number(n, big.mark = "."),
+        label.2 = ifelse(perct < 0, paste0(perct, "%"), paste0("+", perct, "%")))
+
+evoloucao2 <- count.2 %>%
+  mutate(ano_eleicao = as.character(ano_eleicao)) %>% 
+  ggplot(aes(ano_eleicao, n))+
+  geom_col(width = .5, fill = scale_color[1])+
+  geom_point()+
+  geom_line(group = 1)+
+  geom_text(aes(label = label.1), vjust = -1)+
+  geom_text(aes(label = label.2, vjust = -3),
+            color = c("transparent", "blue", "blue"))+
+  scale_y_continuous(limits = c(0, 750000), breaks = seq(0, 565000, 150000), 
+                     scales::number_format(big.mark = "."))+
+  coord_cartesian(clip = "off")+
+  theme(text = element_text(size = 10),
+        title = element_text(size = 10))+
+  labs(title = "Gerais")
+
+```
+
+
+```{r}
+new.grid <- evoloucao1 / evoloucao2 + plot_layout(heights = c(2,1))+
+  plot_annotation(theme = theme(plot.margin = unit(c(0,0,0,0), "cm")))
+
+setwd("C:/rstats/soudapaz")
+Cairo::CairoSVG("new.grid", height = 4.5)
+print(new.grid)     
+dev.off()
+```
+
+
+Comparativa por cargo
+```{r}
+count.3 <- all_militares %>% 
+  count(ano_eleicao, ds_cargo) 
+
+count.3 <- count.3 %>% 
+  group_by(ds_cargo) %>% 
+  arrange(ano_eleicao, .by_group = TRUE) %>% 
+  mutate(pct = round((n/lag(n) - 1) * 100,0),
+         pct_label = ifelse(pct < 0, paste0(n, "\n(", pct, "%)"), paste0(n, "\n(+", pct, "%)")),
+         pct_label = ifelse(is.na(pct), n,pct_label),  
+         label_color = ifelse(pct < 0, "red", "blue"),
+         label_color = ifelse(is.na(pct), "blue", label_color)) %>% 
+  mutate(ano_eleicao = as.factor(ano_eleicao))
+
+count.3$ds_cargo <- factor(count.3$ds_cargo, levels = c(count.3$ds_cargo[1], count.3$ds_cargo[7], count.3$ds_cargo[4]), ordered = T)
+
+
+label_color <- count.3$label_color
+
+#options(scipen = 999)
+(plot.comparacao <- count.3 %>%
+  ggplot(aes(x = ds_cargo, y = n, fill = ano_eleicao))+
+  geom_col(position = "dodge")+
+  scale_fill_manual("", values = scale_color[c(1,3,11)])+
+  geom_text(aes(label = pct_label), 
+   position = position_dodge(width = 1),
+   vjust = -.5, color = label_color, size = 3, hjust = .5)+
+  scale_y_continuous(label = scales::number_format(big.mark = "."))+
+  coord_cartesian(clip = "off") +
+  theme(text = element_text(size = 10),
+        title = element_text(size = 10),
+        plot.margin = unit(c(1, .5, .5, .5 ), "cm"),
+        legend.position = c(.3,.4)))
+```
+
+```{r}
+setwd("C:/rstats/soudapaz")
+Cairo::CairoSVG("plot.comparacao", height = 4)
+print(plot.comparacao)     
+dev.off()
+
+
+
+```
+
+
+
+```{r}
+espectro.camp <- all_militares %>% 
+  mutate(espectro = case_when(sg_partido %in% esquerda ~ "esquerda",
+                              sg_partido %in% centro.esquerda ~ "centro-esquerda",
+                              sg_partido %in% centro.direita ~ "centro-direita",
+                              sg_partido %in% direita ~ "direita",
+                              TRUE ~ "nao identicado")) %>%
+  relocate(espectro, .after = sg_partido) %>%  
+  mutate(sg_partido = str_replace_all(sg_partido, " ", "_")) %>% #pull(sg_partido) %>% unique()
+# https://www.tre-go.jus.br/partidos/partidos-politicos/mudancas-de-nomes-fusoes-incorporacoes-e-extincoes/mudancas-de-nomes-fusoes-incorporacoes-e-extincoes  
+  mutate(sg_partido = recode(sg_partido, 
+                             PMDB = "PMDB(MDB)",
+                             MDB = "PMDB(MDB)",
+                             REPUBLICANOS = "REPUBLICANOS(PRB)",
+                             PRB = "REPUBLICANOS(PRB)",
+                             PEN = "PATRIOTA(PEN)",
+                             PATRIOTA = "PATRIOTA(PEN)",
+                             AVANTE = "AVANTE(PTdoB)",
+                             PT_do_B = "AVANTE(PTdoB)",
+                             PSDC = "DC(PSDC)",
+                             DC = "DC(PSDC)",
+                             PL = "PL(PR)",
+                             PR = "PL(PR)",
+                             PODE = "PODE(PTN)",
+                             PTN = "PODE(PTN)"))
+
+```
+
+```{r}
+esp.direita.comp <- espectro.camp %>%  
+  filter(espectro == "direita") %>% 
+  count(ano_eleicao, sg_partido, sort = T) %>% 
+  group_by(sg_partido) %>% 
+  arrange(ano_eleicao, .by_group = TRUE) %>%
+  mutate(pct = round((n/lag(n) - 1) * 100,0),
+         pct_label = ifelse(pct > 0, paste0("+", pct, "%"), paste0(pct,"%")),
+         pct_label = ifelse(is.na(pct), n, paste0(n, " (", pct_label, ")")),
+         label_color = ifelse(pct < 0, "red", "blue"),
+         label_color = ifelse(is.na(label_color), "blue", label_color)) %>%
+  mutate(value_reorder = max(n)) %>%
+  ungroup() %>%
+  arrange(desc(value_reorder)) %>%
+  mutate(sg_partido = fct_reorder(sg_partido, value_reorder)) 
+
+
+label_color_d <- esp.direita.comp$label_color 
+ 
+esp.direita.comp.plot <- esp.direita.comp %>%
+  ggplot(aes(y = sg_partido, x = n, fill = factor(ano_eleicao))) +
+  scale_fill_manual("Ano", values = scale_color[c(1,3,11)], guide = guide_legend(reverse = T))+ 
+  geom_col(position="dodge", width = .8)+
+  geom_text(aes(label = pct_label),
+            color = label_color_d,
+            size = 2,
+            position = position_dodge(width = 1), vjust =.5, hjust = -.1)+
+  coord_cartesian(clip = "off")+
+  theme(plot.margin = unit(c(0,1,0,0),"cm"), 
+        text = element_text(size = 6),
+        title = element_text(size = 8),
+        plot.title.position = "plot",
+        legend.position = "none",
+        legend.direction = "vertical")+
+  labs(title = "Direita")
+```
+
+```{r}
+esp.esq.comp <- espectro.camp %>%  
+  filter(espectro == "esquerda") %>% 
+  count(ano_eleicao, sg_partido, sort = T) %>% 
+  group_by(sg_partido) %>% 
+  arrange(ano_eleicao, .by_group = TRUE) %>%
+  mutate(pct = round((n/lag(n) - 1) * 100,0)) %>% 
+  ungroup() %>% 
+  mutate(
+         pct_label = ifelse(pct > 0, paste0("+", pct, "%"), paste0(pct,"%")),
+         pct_label = ifelse(is.na(pct), n, paste0(n, " (", pct_label, ")")), 
+         label_color = ifelse(pct < 0, "red", "blue"),
+         label_color = ifelse(is.na(label_color), "blue", label_color)) %>%
+  group_by(sg_partido) %>% 
+  mutate(value_reorder = max(n)) %>%
+  ungroup() %>% 
+  mutate(sg_partido = fct_reorder(sg_partido, value_reorder))
+
+label_color <- esp.esq.comp$label_color 
+
+
+esp.esq.comp.plot <- esp.esq.comp %>%
+  ggplot(aes(y = sg_partido, x = n, fill = factor(ano_eleicao))) +
+  scale_fill_manual("Ano", values = scale_color[c(1,3,11)], guide = guide_legend(reverse = T))+ 
+  geom_col(position="dodge", width = .8)+
+  scale_y_discrete(label = c("UP", "PSTU", "PCB", "PSOL", "PC do B", "PT"))+
+  geom_text(aes(label = pct_label),
+            color = label_color,
+            size = 2,
+            position = position_dodge(width = 1), vjust =.5, hjust = -.5)+
+  coord_cartesian(clip = "off")+
+  theme(plot.margin = unit(c(0,1,0,0),"cm"), 
+        text = element_text(size = 6),
+        title = element_text(size = 8),
+        plot.title.position = "plot",
+        legend.position = "bottom",
+          legend.direction = "horizontal")+
+  labs(title = "Esquerda")
+```
+
+```{r}
+grid.esp <- esp.direita.comp.plot + (esp.esq.comp.plot / plot_spacer())+
+  plot_annotation(theme = theme(plot.margin = unit(c(.5,1,0,.5),"cm")))
+```
+
+```{r}
+setwd("C:/rstats/soudapaz")
+Cairo::CairoSVG("grid.esp.svg")
+print(grid.esp)     
+dev.off()
+```
+

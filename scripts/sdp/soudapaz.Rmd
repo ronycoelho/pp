@@ -1,0 +1,1494 @@
+---
+title: "Projeto Instituto Sou da Paz - Eleições"
+editor_options:
+  chunk_output_type: console
+output: word_document
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F, 
+                      cache.rebuild = T)
+```
+
+# Análise quantitativa do perfil dos candidatos segundo a força policial a que pertencem
+```{r blibliotecas}
+library(tidyverse)
+library(scales)
+library(descr)
+library(ggsci)
+library(ggthemes)
+library(mdthemes)
+library(kableExtra)
+library(patchwork)
+library(geobr)
+library(janitor)
+library(electionsBR)
+
+setwd("C:/rstats/soudapaz")
+```
+
+
+```{r theme_color}
+theme_set(ggthemes::theme_wsj(color = "gray", base_size = 5)+
+            theme(plot.caption = element_text(size = 5)))
+
+caption_text <- "Fonte: TSE | Pulso Público/Instituto Sou da Paz"
+
+scale_color <- ggsci::pal_lancet()(9)
+
+scale_color <- scale_color[9:1]
+
+#greens color
+# https://www.colorhexa.com/4b5320
+darkgreen1 <- "#3e451b"
+darkgreen2 <- "#4b5320"
+mediangreen <- "#acbd53"
+lightgreen <- "#eaeed3"
+
+scale_color <- c(scale_color, darkgreen1, darkgreen2, mediangreen, lightgreen)
+
+scales::show_col(scale_color)
+```
+
+Fonte de dados: [Repositório de dados eleitorais do TSE]( https://www.tse.jus.br/eleicoes/estatisticas/repositorio-de-dados-eleitorais-1/repositorio-de-dados-eleitorais)
+
+Acompanhamento on-line das candidaturas: [Sistema DivulgaCandContas on-line]( http://inter04.tse.jus.br/ords/dwtse/f?p=1001:10:6110467812344)
+
+Dados baixados em 19 de outubro às 10h40. Atualizados pelo TSE em 05/10
+
+```{r funcao download}
+download.zip <- function(link){
+  wd <- getwd()
+  temp_dir <- tempdir()
+  setwd(temp_dir)
+  temp_file <- tempfile(tmpdir=temp_dir)
+  download.file(url=link, destfile=temp_file)
+  unzip(temp_file, exdir=temp_dir)
+  files <- list.files(path=temp_dir)
+  unlink(temp_file)
+  
+  return(files) 
+  setwd(wd)
+}
+```
+
+
+```{r base principal, eval=F}
+# Atualizado em 26/10
+"http://agencia.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2020.zip"
+
+link_candidatos <- "http://agencia.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2020.zip"
+
+list.of.files <- download.zip(link_candidatos)
+
+download.file(link_candidatos, destfile = temp_dir)
+
+file <- paste0(tempdir(), "\\consulta_cand_2020_BRASIL.csv")
+# guess_encoding(cand_sp)
+
+brasil <- read_csv2(file, locale(encoding = "ISO-8859-1"), col_names = T, col_types = NULL) %>% 
+  clean_names()
+
+# 1º download - 
+# arquivo com 551.470 linhas
+# No mesmo momento, o divulgaCand do TSE apresenta 515.256 pedidos de candidaturas
+
+# 2º download - 19 de outubro
+# arquivo com  555.058 linhas
+# No mesmo momento, o divulgaCand do TSE apresenta 555.077 pedidos de candidaturas
+
+# 3º download - 26 de outubro
+# arquivo com 556.033 linhas
+# No momento, site do TSE indisponível
+
+# 4º download - 03 de novembro
+# arquivo com 557.366 linhas
+# No momento, site do TSE apresenta exatamente o mesmo número 557.336
+# Diferença de 5.896 em relação ao primeiro download
+
+# 5º download - 11 de novembro
+```
+
+
+```{r bens}
+link_bens <- "http://agencia.tse.jus.br/estatistica/sead/odsele/bem_candidato/bem_candidato_2020.zip"
+
+list.of.files_bens <- download.zip(link_bens)
+
+file_bens <- paste0(tempdir(), "\\bem_candidato_2020_BRASIL.csv")
+
+bens <- read_csv2(file_bens, locale(encoding = "ISO-8859-1"), col_names = T, col_types = NULL)
+
+bens_sel <- bens %>% 
+  select(SQ_CANDIDATO, SG_UE, DS_BEM_CANDIDATO, VR_BEM_CANDIDATO) %>% 
+  janitor::clean_names()
+
+##########################################
+assentos <- electionsBR::seats_local(year = 2016)
+
+assentos <- assentos %>%
+  filter(DESCRICAO_CARGO == "Vereador") %>% 
+  select(SIGLA_UE, NOME_UE, DESCRICAO_CARGO, QTDE_VAGAS) %>% 
+  arrange(desc(QTDE_VAGAS)) %>% 
+  janitor::clean_names()
+```
+
+
+```{r receitas}
+link_receitas <-"http://agencia.tse.jus.br/estatistica/sead/odsele/prestacao_contas/prestacao_de_contas_eleitorais_candidatos_2020.zip"
+
+list.of.files_receitas <- download.zip(link_receitas)
+
+file_receitas <- paste0(tempdir(), "\\receitas_candidatos_2020_BRASIL.csv")
+
+receitas <- read_csv2(file_receitas, locale(encoding = "ISO-8859-1"), col_names = T, col_types = NULL)
+  
+receitas <- receitas %>%
+  # Colunas desnecessárias
+  select(-c(1:9, SG_UF, NM_UE, CD_CARGO, NR_CANDIDATO, NR_CPF_VICE_CANDIDATO, NR_PARTIDO, NM_PARTIDO ))
+
+receitas <- receitas %>% 
+  janitor::clean_names()
+```
+
+```{r bases_secundarias}
+codigos <- read_csv("http://basedosdados.org/dataset/b5878df7-e259-44bc-8903-4feb8d56945a/resource/c1deb363-ffba-4b1e-95dc-c5e08311852e/download/diretorio_municipios.csv")
+
+populacao <- read_csv2("https://raw.githubusercontent.com/ronycoelho/databases/master/ibge_2018_populacao_classificacao.csv", 
+                       locale(encoding = "ISO-8859-1"), col_names = T, col_types = NULL) %>% 
+            janitor::clean_names() 
+
+shapemun <- geobr::read_municipality(simplified = T)
+
+shapeestado <- geobr::read_state(simplified = T)
+```
+
+```{r manip_1}
+info_cart <- names(brasil)[c(1:10, 14, 23, 25, 31, 34, 37, 42, 44, 46, 48, 50, 53, 61)]
+
+brasil <- brasil %>%
+    select(-one_of(info_cart))
+
+populacao <- populacao %>% 
+  select(1, 6,7)
+
+populacao <- populacao %>%
+  mutate(cod_municipio = as.character(cod_municipio)) %>% 
+  select(id_municipio = cod_municipio, 2,3)
+```
+
+```{r join}
+codigos <- codigos %>%
+  select(sg_ue = id_municipio_TSE, id_municipio, capital_estado, regiao) %>% 
+  mutate(sg_ue = as.character(sg_ue),
+         sg_ue = str_pad(sg_ue, width=5, pad=0))
+
+brasil <- brasil %>% 
+  left_join(codigos, by = "sg_ue") %>% 
+  relocate(regiao, .after = sg_uf)
+
+brasil <- brasil %>%
+  mutate(id_municipio = as.character(id_municipio)) %>% 
+  left_join(populacao, by = "id_municipio")
+```
+
+```{r save_load}
+# Saved in 26 de outubro
+
+#save.image("dadoseleitorais_soudapaz_03_nov.RData")
+
+#rm(list=ls())
+#setwd("C:/rstats/soudapaz")
+load("dadoseleitorais_soudapaz_03_nov.RData")
+```
+
+```{r ocupacao_texto}
+# Ocupações TSE (243)
+ocupacoes_tse <- brasil %>% 
+  count(ds_ocupacao) %>% 
+  pull(ds_ocupacao) %>% 
+  enframe()
+
+#write.csv2(ocupacoes, "listadeocupacoes3.csv", fileEncoding = "ISO-8859-1")
+
+# "MEMBRO DO MINISTÉRIO PÚBLICO", DETETIVE PARTICULAR, BOMBEIRO CIVIL, 
+ocup.militares <- c("POLICIAL CIVIL", "POLICIAL MILITAR", "MILITAR REFORMADO", 
+                      "MEMBRO DAS FORÇAS ARMADAS", "BOMBEIRO MILITAR")
+
+#snakecase::to_title_case(ocup.militares)
+```
+
+
+```{r base principal_1}
+dt.ocp.militares <- brasil %>% 
+  filter(ds_ocupacao %in% ocup.militares)
+```
+
+### Seleção por patente
+```{r fig.width=8}
+patentes <- brasil %>% 
+  filter(ds_ocupacao %in% ocup.militares) %>% 
+  pull(nm_urna_candidato) %>% 
+  enframe()
+
+patentes <- patentes %>% 
+  mutate(patente = str_split_fixed(value, " ", 2)[,1])
+
+patente.vetor <- patentes %>% 
+  count(patente, sort = T) %>% 
+  pull(patente)
+
+# Seleção manual de patentes
+print(patente.vetor, max = 30)
+
+patentes_selecionadas <- patente.vetor[c(1:10, 12:13, 17, 20, 24, 33, 37, 39, 55, 59, 68, 85:88, 106, 112,  125, 127, 136, 165, 285, 289:290, 409, 410, 809, 812, 976, 1701, 1707, 1762)]
+
+patentes_selecionadas[length(patentes_selecionadas)+1] <- "GUARDA M"
+
+#paste(patentes_selecionadas, collapse = ",")
+
+#Selecionadas em 3 de outubro
+# "SARGENTO,CABO,TENENTE,CORONEL,SGT,CAPITÃO,MAJOR,SUBTENENTE,POLICIAL,DELEGADO,SUB,SOLDADO,BOMBEIRO,COMANDANTE,INVESTIGADOR,CAPITAO,CEL,TEN,CB,INSPETOR,DELEGADA,SD,SGT.,SGTO,SUBOFICIAL,PM,CAPITÃ,SARGENTA,ST,COMISSÁRIO,AGENTE,SAGENTO,SUB-TENENTE,SUB.,INSPETORA,INVESTIGADORA,CMDT,COMENDADOR,ESCRIVÃO,SARG.,SB,TEN."
+
+
+#"SARGENTO,CABO,TENENTE,CORONEL,SGT,CAPITÃO,MAJOR,SUBTENENTE,POLICIAL,DELEGADO,SUB,SOLDADO,BOMBEIRO,COMANDANTE,INVESTIGADOR,CAPITAO,CEL,TEN,CB,INSPETOR,DELEGADA,SD,SGT.,SGTO,SUBOFICIAL,PM,CAPITÃ,SARGENTA,ST,COMISSÁRIO,AGENTE,SAGENTO,SUB-TENENTE,SUB.,SARGENTE,CMDT,COMENDADOR,ESCRIVÃO,SAYMON,TEN."
+
+base.patente <- brasil %>% 
+  filter(str_detect(nm_urna_candidato, paste(patentes_selecionadas, collapse = "|")))
+
+# Nome de urna
+base.patente <- base.patente %>%
+  #select(nm_urna_candidato, nm_candidato, ds_ocupacao, sg_partido, nm_ue, sg_uf) %>% 
+  filter(!ds_ocupacao %in% ocup.militares) %>% 
+  mutate(patente = str_split_fixed(nm_urna_candidato, " ", 2)[,1]) %>%
+  filter(patente %in% patentes_selecionadas) 
+```
+
+
+```{r join main bases}
+base.patente <- base.patente %>% 
+  mutate(ocupacao_militar = "Não") %>% 
+  relocate(ocupacao_militar, .after = ds_ocupacao)
+
+dt.ocp.militares <- dt.ocp.militares %>% 
+  mutate(ocupacao_militar = "Sim") %>% 
+  relocate(ocupacao_militar, .after = ds_ocupacao)
+
+base.patente <- base.patente %>% 
+  select(-patente)
+
+# Checar columas antes de juntar
+names.base.patente <- names(base.patente)
+names.base.militar <- names(dt.ocp.militares)
+
+setdiff(names.base.patente, names.base.militar)
+
+# Juntar bases
+base.geral.militares <- bind_rows(dt.ocp.militares, base.patente)
+```
+
+# Load base.geral.militares
+```{r}
+write.csv2(base.geral.militares, "base.geral.militares.csv", fileEncoding = "ISO-8859-1")
+
+load("base.geral.militares.csv")
+```
+
+
+# Geral Brasil
+```{r geral brasil}
+# Todas as cand.
+cand_brasil <- brasil %>% 
+  count(cargo = ds_cargo) %>%
+  arrange(n) %>% 
+  mutate(
+         perc = round(n/sum(n), 2)) %>% 
+  mutate(label =  scales::number(n, big.mark = ".")) 
+
+# Configurar para plotar
+cand_brasil$ymax <- cumsum(cand_brasil$perc)
+cand_brasil$ymin <- c(0, head(cand_brasil$ymax, n = -1))
+cand_brasil$labelposition <- (cand_brasil$ymax - cand_brasil$ymin)/3
+cand_brasil$label_2 <- paste0(snakecase::to_title_case(cand_brasil$cargo), "\n", cand_brasil$label)
+
+donut.geral <- ggplot(cand_brasil,
+       aes(
+         ymax = ymax,
+         ymin = ymin,
+         xmax = 4,
+         xmin = 3,
+         fill = cargo
+       )) +
+  geom_rect() +
+  geom_label(
+    x = 4,
+    aes(y = c(0, 0.11, 0.31), label = label_2),
+    size = 4,
+    fontface = "bold",
+    color = "white",
+    alpha = .5
+  ) +
+  geom_text(x = 2,
+            y = 2.7,
+            label = "Total\n557.336",
+            size = 5) +
+  scale_fill_manual(values = scale_color[c(3, 1, 4)]) +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  theme(legend.position = "none",
+        plot.title = element_text(vjust = -1, hjust = .2),
+        panel.background = element_rect(fill = "#efefef", color = "transparent"),
+        plot.background = element_rect(fill = "#efefef", color = "transparent"))+
+  labs(title = "Cand. gerais por cargo")
+```
+
+
+
+# Militares
+```{r plotar geral mais militares}
+geral_mais_militares <- data.frame(candidaturas = c("Cand. Policiais", "Cand. não policiais"), qt = c(nrow(base.geral.militares), nrow(brasil)-nrow(base.geral.militares)))
+
+geral_mais_militares <- geral_mais_militares %>% 
+  mutate(perc = round(qt/ sum(qt), 3)*100 )
+
+# Configurar para plotar
+geral_mais_militares$ymax <- cumsum(geral_mais_militares$perc)
+
+geral_mais_militares$ymin <- c(0, head(geral_mais_militares$ymax, n = -1))
+
+geral_mais_militares$labelposition <- (geral_mais_militares$ymax - geral_mais_militares$ymin)/3
+
+geral_mais_militares$label_2 <- paste0(geral_mais_militares$candidaturas, "\n", geral_mais_militares$perc, "%")
+
+(donut_militares
+  <- ggplot(geral_mais_militares,
+       aes(
+         ymax = ymax,
+         ymin = ymin,
+         xmax = 4,
+         xmin = 3,
+         fill = candidaturas
+       )) +
+  geom_rect() +
+  geom_label(
+    x = 4.1,
+    aes(y = c(7, 32.8), label = label_2),
+    size = 4,
+    fontface = "bold",
+    color = "white",
+    alpha = .5
+  ) +
+  geom_text(x = 2,
+            y = 2.7,
+            label = "Total \n557.366",
+            size = 5) +
+  scale_fill_manual(values = scale_color[c(1, 11)]) +
+  coord_polar(theta = "y", clip = "off") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  theme(
+        legend.position = "none",
+        plot.title = element_text(vjust = -1, hjust = .2),
+        plot.margin = unit(c(0,1,0,0), "cm"),
+        panel.background = element_rect(fill = "#efefef", color = "transparent"),
+        plot.background = element_rect(fill = "#efefef", color = "transparent"))+
+  labs(title = "Participação de policias nas candidaturas gerais"))
+```
+
+```{r grid.donuts}
+grid.1 <- donut.geral + donut_militares +
+  patchwork::plot_annotation(
+                             theme = theme(plot.title = element_text(size = 20),
+                                           plot.margin = unit(c(0,0,0,0), "cm"),
+                               plot.background = element_rect(fill = "#efefef")))
+
+  setwd("C:/rstats/soudapaz")
+  Cairo::CairoSVG("grid.1", width = 7.75)
+  print(grid.1)     
+  dev.off()
+```
+
+
+```{r bases_cargos}
+# 19.167 pedidos. Exatamente igual ao do site do TSE
+pref <- brasil %>% 
+  filter(ds_cargo == "PREFEITO")
+
+# 19.258. No site 19.353
+vice <- brasil %>% 
+  filter(ds_cargo == "VICE-PREFEITO")
+
+# 513.035 mil registro. No site do TSE 515.269
+ver <- brasil %>% 
+  filter(ds_cargo == "VEREADOR")
+```
+
+```{r}
+levels_cargo <- unique(base.geral.militares$ds_cargo)
+
+levels_cargo <- levels_cargo[c(2,3,1 )]
+
+tabela_1 <- base.geral.militares %>% 
+  count(cargo = ds_cargo) %>%
+  mutate(porc = round(n/sum(n)*100, 2)) %>% 
+  janitor::adorn_totals() %>%
+  mutate(quantidade = paste0(n, " (", porc, "%)" ),
+         cargo = ordered(cargo, levels = levels_cargo)) %>% 
+  select(cargo, quantidade) %>% 
+  kbl() %>% 
+  kable_classic(full_width = F)
+
+# Verificar brasil
+brasil %>% 
+  count(cargo = ds_cargo) %>%
+  mutate(porc = round(n/sum(n)*100, 2)) %>% 
+  janitor::adorn_totals() %>%
+  mutate(quantidade = paste0(n, " (", porc, "%)" ))
+```
+
+# grafico ocupaçao
+```{r}
+ocup.militar.nao.militar <- base.geral.militares %>% 
+    count(ocupacao_militar) %>% 
+    mutate(perc = round(n/sum(n)*100, 1))
+
+ocup.militar.nao.militar$ymax <- cumsum(ocup.militar.nao.militar$perc)
+ocup.militar.nao.militar$ymin <- c(0, head(ocup.militar.nao.militar$ymax, n = -1))
+ocup.militar.nao.militar$labelposition <- (ocup.militar.nao.militar$ymax - ocup.militar.nao.militar$ymin)/3
+ocup.militar.nao.militar$label_2 <- paste0(c("Identificação por nome de urna", "Identificação por ocupação"), "\n", number(ocup.militar.nao.militar$n, big.mark = "."), " (",ocup.militar.nao.militar$perc, "%)")
+
+(donut.ocupacao <- ggplot(ocup.militar.nao.militar,
+       aes(
+         ymax = ymax,
+         ymin = ymin,
+         xmax = 4,
+         xmin = 3,
+         fill = ocupacao_militar,
+       )) +
+  geom_rect() +
+  geom_label(
+    aes(x = c(3.9, 3.8), y = c(12, 40), label = label_2),
+    size = 4,
+    fontface = "bold",
+    color = "white",
+    alpha = .5
+  ) +
+  geom_text(x = 2,
+            y = 2.7,
+            label = paste0("Registros\n", number(nrow(base.geral.militares), big.mark = ".")),
+            fontface = "bold",
+            size = 5) +
+  scale_fill_manual(values = scale_color[c(12, 11)]) +
+  coord_polar(theta = "y", clip = "off") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  theme(
+        legend.position = "none",
+        plot.margin = unit(c(0,0,0,0), "cm"),
+        panel.background = element_rect(fill = "#efefef", color = "transparent"),
+        plot.background = element_rect(fill = "#efefef", color = "transparent")))
+```
+
+### Distribuição por ocupação declarada
+```{r fig.width=8}
+(graf.ocupacao.militar <- base.geral.militares %>%
+    filter(ocupacao_militar == "Sim") %>% 
+      count(ds_ocupacao, sort = T) %>%
+  mutate(prop = round(n/sum(n), 2)*100,
+        ds_ocupacao = fct_reorder(ds_ocupacao, n )) %>%
+  ggplot(aes(x = n, y = ds_ocupacao, color = ds_ocupacao)) +
+  scale_color_manual(values = scale_color)+
+  geom_segment(aes(xend = 0, yend = ds_ocupacao, size = prop),
+                 show.legend = F, color = scale_color[1:5]) +
+  geom_point(aes(size = prop),
+              color = scale_color[1:5],  
+               show.legend = F) +
+  geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white", 
+             size = 5,
+              color = scale_color[1:5],  
+               hjust = "inward",
+               show.legend = F)+
+  geom_text(aes(y = ds_ocupacao, x = 0, label = ds_ocupacao),
+            vjust = -1.5, hjust = 0, color = "black", size = 3)+
+  scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+  coord_cartesian(clip = "off", expand = T)+
+  theme(
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_blank(),
+        plot.title.position = "panel",
+        plot.title = element_text(hjust = 0, size = 12),
+        plot.subtitle = element_text(hjust = 0, size = 10),
+        plot.tag.position = c(x= 0.1, y = -0.1),
+        plot.margin = unit(c(.5,0,0,0), "cm"))+
+  labs(title = "Ocupação policial",
+       subtitle = 'Identificado pelo campo "ocupação"',
+       x = "", y = ""
+       # tag = paste0("*Os nomes de urna foram identificados por patentes, como exemplo: \n", 
+       #              paste0(paste0(tag.patente[1:11], collapse = "; "), "\n",paste0(tag.patente[12:16], collapse = "; ") ))
+       ))
+   
+   
+   
+  #  
+  #  
+  #  
+  #  
+  #  
+  # ggplot(aes(x = n, y = ds_ocupacao, color = ds_ocupacao)) +
+  # scale_color_manual(values = scale_color)+
+  # geom_segment(aes(xend = 0, yend = ds_ocupacao, size = prop),
+  #                show.legend = F, color = scale_color[1:5]) +
+  # geom_point(aes(size = prop), color = scale_color[1:5],
+  #              show.legend = F) +
+  # geom_label(aes(label = paste0(" ", prop, "%")), 
+  #              fill = "white",
+  #            size = 5,
+  #               color = scale_color[1:5],
+  #              hjust = "inward",
+  #              show.legend = F)+
+  # geom_text(aes(y = ds_ocupacao, x = 0, label = ds_ocupacao), 
+  #           vjust = -1.5, hjust = 0, color = "black", size = 3)+
+  # scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+  # coord_cartesian(clip = "off")+
+  # theme(aspect.ratio = 1.1/1,
+  #       axis.text.x = element_text(size = 10),
+  #       axis.text.y = element_blank(),
+  #       plot.title.position = "panel",
+  #       plot.title = element_text(hjust = 0, size = 12),
+  #       plot.subtitle = element_text(hjust = 0, size = 10),
+  #       plot.tag.position = c(x= 0.1, y = -0.1),
+  #       plot.margin = unit(c(0,0,0.5,0), "cm"))+
+  # labs(title = "Por ocupação policial declarada",
+  #      subtitle = "Identificação pelo campo 'Ocupação' na base do TSE",
+  #      x = "", y = ""))
+
+
+
+```
+
+
+```{r}
+tag.patente <- snakecase::to_title_case(patentes_selecionadas)[c(1:4, 6:10, 12:15, 20, 38)]
+
+(graf.ocupacao.civl <- base.geral.militares %>%
+  filter(ocupacao_militar == "Não") %>% 
+  count(ds_ocupacao, sort = T) %>%
+  top_n(n, n= 10) %>% 
+  mutate(prop = round(n/sum(n), 2)*100,
+        ds_ocupacao = fct_reorder(ds_ocupacao, n )) %>% 
+  ggplot(aes(x = n, y = ds_ocupacao, color = ds_ocupacao)) +
+  scale_color_manual(values = scale_color)+
+  geom_segment(aes(xend = 0, yend = ds_ocupacao, size = prop),
+                 show.legend = F, color = scale_color[1:10]) +
+  geom_point(aes(size = prop),
+              color = scale_color[1:10],  
+               show.legend = F) +
+  geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white", 
+             size = 5,
+              color = scale_color[1:10],  
+               hjust = "inward",
+               show.legend = F)+
+  geom_text(aes(y = ds_ocupacao, x = 0, label = ds_ocupacao),
+            vjust = -1.5, hjust = 0, color = "black", size = 3)+
+  scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+  coord_cartesian(clip = "off")+
+  theme(
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_blank(),
+        plot.title.position = "panel",
+        plot.title = element_text(hjust = 0, size = 12),
+        plot.subtitle = element_text(hjust = 0, size = 10),
+        plot.tag.position = c(x= 0.1, y = -0.1),
+        plot.margin = unit(c(1,0,0,0), "cm"))+
+  labs(title = "Ocupação não policial",
+       subtitle = "Identificado pelo 'Nome de urna'*",
+       x = "", y = ""
+       # tag = paste0("*Os nomes de urna foram identificados por patentes, como exemplo: \n", 
+       #              paste0(paste0(tag.patente[1:11], collapse = "; "), "\n",paste0(tag.patente[12:16], collapse = "; ") ))
+       ))
+```
+
+# donut 2
+```{r}
+# civil_dim <- get_dim(graf.ocupacao.civl)
+# graf.ocupacao.militar_new <- set_dim(graf.ocupacao.militar, civil_dim)
+# 
+# layout <- c(
+#   area(t = 2, l = 1, b = 5, r = 1),
+#   area(t = 0, l = 1, b = 3, r = 1)
+# )
+
+grid.2 <- graf.ocupacao.militar / graf.ocupacao.civl +
+  plot_layout(heights = c(1, 2)) 
+
+
+#donut.ocupacao | (graf.ocupacao.militar/graf.ocupacao.civl)+plot_layout(widths = c(1.5, 1))
+
+grid.2 <- donut.ocupacao + grid.2 +
+  plot_layout(widths = c(1.5, 1))+
+  plot_annotation(
+                  theme = theme(panel.background = element_rect(fill = "#efefef"),
+                                plot.margin = unit(c(.5,.5,.5,0), "cm")))
+
+    setwd("C:/rstats/soudapaz")
+    Cairo::CairoSVG("grid.2", width = 9.5, height = 9)
+    print(grid.2)     
+    dev.off()
+```
+
+### Distribuição por partido
+```{r fig.width=8, fig.height=10}
+# por partido
+(por.partido <- base.geral.militares %>% 
+  count(sg_partido, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 4)*100,
+         sg_partido = fct_reorder(sg_partido, n )) %>% 
+  ggplot(aes(x = n, y = sg_partido)) +
+  scale_color_manual(values = "darkgray")+
+  geom_segment(aes(xend = 0, yend =sg_partido, size = prop),
+                  color = scale_color[11],
+                  show.legend = F) +
+  geom_point(aes(size = prop),
+                color = scale_color[11],
+               show.legend = F) +
+  geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white", 
+             size = 3,
+                color = scale_color[11],
+               hjust = "inward",
+               show.legend = F)+
+  #geom_text(aes( x = 0, y = sg_partido, label = sg_partido), color = "black", size = 4, vjust = -1, hjust = 0)+
+  scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+   scale_size(range = c(0,3))+
+  theme(
+        plot.title.position = "plot",
+        plot.margin = unit(c(0,.5,0,0), "cm"),
+        plot.title = element_text(size = 12),
+        text = element_text(size = 8),
+        )+ #axis.text.y = element_blank()
+  #ggthemes::theme_wsj(color = "gray")+
+  labs(title = "Partido", 
+       x = "", y = ""))
+```
+
+
+```{r espectro partidario}
+# Fonte: https://forumseguranca.org.br/wp-content/uploads/2020/10/anuario-14-2020-v1-final.pdf (p. 163)
+esquerda <-  c("PC do B", "PCB","PSOL", "PSTU", "PT", "UP")
+centro.esquerda <- c( "PDT",  "PSB", "PV", "REDE")
+centro.direita <-  c("DEM", "MDB", "PP", "CIDADANIA",  "PSD",  "PSDB")
+direita <- c("AVANTE", "DC", "NOVO", "PATRIOTA", "PEN", "PHS", "PL", "PMB", "PMN", "PODE", "PPL", "PR", "PRB", "PROS", "PRP", "PRTB", "PSC", "PSDC", "PSL", "PT do B", "PTB", "PTC", "PTN", "REPUBLICANOS", "SOLIDARIEDADE")
+
+partidos.base.tse <- unique(base.geral.militares$sg_partido)
+
+base.geral.militares <- base.geral.militares %>%  
+  mutate(espectro = case_when(sg_partido %in% esquerda ~ "Esquerda",
+                              sg_partido %in% centro.esquerda ~ "Centro-esquerda",
+                              sg_partido %in% centro.direita ~ "Centro-direita",
+                              sg_partido %in% direita ~ "Direita",
+                              TRUE ~ "nao identicado")) %>%
+  relocate(espectro, .after = sg_partido)
+  
+# Checar
+todos <- unique(c(esquerda, centro.esquerda, centro.direita, direita))
+
+sort(partidos.base.tse)
+sort(todos)
+
+setdiff(todos, partidos.base.tse)
+setdiff(partidos.base.tse, todos)
+
+# Valores compatíveis com o Anúario do Fórum de S. Pública
+# p. 163 (link acima)
+# rm(base.geral.militares_teste) %>% 
+#   count(espectro) %>% 
+#   mutate(perc = n/sum(n)*100) %>% 
+#   adorn_totals()
+
+color_espect <- colorRampPalette(scale_color[c(1,2)])
+
+color_espect <- color_espect(20) 
+
+color_espect <- color_espect[c(1,7,13,19)]
+
+
+(por.espectro <- base.geral.militares %>% 
+  count(espectro, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 4)*100,
+         espectro = fct_reorder(espectro, n )) %>% 
+  ggplot(aes(x = n, y = espectro)) +
+  scale_color_manual(values = "darkgray")+
+  geom_segment(aes(xend = 0, yend =espectro, size = prop),
+                  color = color_espect,
+                 show.legend = F) +
+  geom_point(aes(size = prop),
+                color = color_espect,
+               show.legend = F) +
+  geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white", 
+             size = 4,
+              color = color_espect,
+               hjust = "inward",
+               show.legend = F)+
+  geom_text(aes( x = 0, y = espectro, label = espectro), color = "black", size = 4, vjust = -1.5, hjust = 0)+
+  scale_x_continuous(limits = c(0, 5000), labels = scales::comma_format(big.mark = "."))+
+  scale_size(range = c(1,4))+
+  coord_cartesian(clip = "off")+  
+  theme(
+        plot.margin = unit(c(0,0,0,0), "cm"),
+        plot.title = element_text(size = 12),
+        plot.caption.position = "plot",
+        text = element_text(size = 8),
+        axis.text.y = element_blank())+
+  labs(title = "Espectro", 
+       x = "", y = ""))
+```
+
+
+```{r}
+(grid.5 <- por.partido + (por.espectro/ patchwork::plot_spacer()/patchwork::plot_spacer())+  
+                  plot_annotation(  
+                  theme = theme (
+                    aspect.ratio = 1.5/1,
+                    plot.margin = unit(c(0.5,0.5,0,0.5), "cm"),
+                    plot.title = element_text(size = 15))))
+
+setwd("C:/rstats/soudapaz")
+Cairo::CairoSVG("grid.5", height = 7.5)
+print(grid.5)     
+dev.off()
+```
+
+### Distribuição por estado
+```{r fig.width=8, fig.height=10}
+(dist.estado <- base.geral.militares %>% 
+  count(sg_uf, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 3)*100,
+         sg_uf = fct_reorder(sg_uf, n )) %>%
+  ggplot(aes(x = n, y = sg_uf)) +
+  geom_segment(aes(xend = 0, yend = sg_uf, size = prop),
+                 show.legend = F, color = "#1C361B") +
+  #scale_color_manual(values = scale_color)+
+  geom_point(aes(size = prop),
+               show.legend = F, color = "#1C361B") +
+  geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white", 
+               hjust = "inward",
+               show.legend = F)+
+  scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+  labs(title = "Candidaturas por UF", 
+       x = "", y = "", 
+       caption = "Fonte: TSE") +
+   theme(aspect.ratio = 1.2/1))
+```
+
+### Distribuição partido e estado
+```{r fig.width=8, fig.height=20}
+# por partido e estado
+base.geral.militares %>% 
+  count(espectro, regiao, sg_uf, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 2)*100,
+         espectro = fct_reorder(espectro, n )) %>%
+  ggplot(aes(x = n, y = espectro)) +
+  geom_segment(aes(xend = 0, yend = espectro),
+                 show.legend = F) +
+  scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+  theme(
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank())+
+  labs(title = "Candidaturas por partido e estado",
+       x = "", y = "", 
+       caption = "Fonte: TSE")+
+  facet_wrap(vars(regiao,sg_uf), ncol = 3)
+```
+
+### Instrução, raça, genero, idade
+```{r genero, fig.width=8}
+(por.genero <- base.geral.militares %>% 
+  count(ds_genero, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 2)*100,
+         ds_genero = fct_reorder(ds_genero, n )) %>% 
+  ggplot(aes(x = n, y = ds_genero, color = ds_genero)) +
+  scale_color_manual(values = scale_color)+
+  geom_segment(aes(xend = 0, yend = ds_genero, size = prop),
+                 show.legend = F, color = scale_color[1:2]) +
+  scale_size(range = c(1,3))+
+  geom_point(aes(size = prop),
+               show.legend = F, color = scale_color[1:2]) +
+  geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white", 
+             color = scale_color[1:2],
+                size = 5, 
+               hjust = "inward",
+               show.legend = F)+
+  geom_text(aes( x = 0, y = ds_genero, label = ds_genero), color = "black", size = 3, vjust = -2, hjust = 0)+
+  scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+  coord_cartesian(clip = "off", expand = T)+
+  theme(      plot.margin = unit(c(0,0.5,0,0), "cm"),
+        text = element_text(size = 10),
+        title = element_text(size = 12),
+    axis.text.y = element_blank())+
+  labs(title = "Gênero", 
+       x = "", y = ""))
+```
+
+```{r raca, fig.width=8}
+(raca <- base.geral.militares %>% 
+  count(ds_cor_raca, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 3)*100,
+         ds_cor_raca = fct_reorder(ds_cor_raca, n )) %>% 
+  ggplot(aes(x = n, y = ds_cor_raca, color = ds_cor_raca)) +
+  scale_color_manual(values = scale_color)+
+  geom_segment(aes(xend = 0, yend = ds_cor_raca, size = prop),
+                 show.legend = F, color = scale_color[1:6]) +
+    scale_size(range = c(1,3))+
+  geom_point(aes(size = prop),
+               show.legend = F, color = scale_color[1:6]) +
+  geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white",
+             size = 5,
+                color = scale_color[1:6],
+               hjust = "inward",
+               show.legend = F)+
+  geom_text(aes( x = 0, y = ds_cor_raca, label = ds_cor_raca), color = "black", size = 3, vjust = -2, hjust = 0)+
+  scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+coord_cartesian(clip = "off", expand = T)+
+    theme(
+          plot.margin = unit(c(0,0.5,0,0), "cm"),
+          text = element_text(size = 10),
+        title = element_text(size = 12),
+    axis.text.y = element_blank())+
+    labs(title = "Cor/raça", 
+       x = "", y = ""))
+```
+
+
+```{r}
+(estado.civil <- base.geral.militares %>% 
+  count(ds_estado_civil, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 2)*100,
+         ds_estado_civil = fct_reorder(ds_estado_civil, n )) %>% 
+  ggplot(aes(x = n, y = ds_estado_civil, color = ds_estado_civil)) +
+  scale_color_manual(values = scale_color)+
+  geom_segment(aes(xend = 0, yend = ds_estado_civil, size = prop),
+                 show.legend = F, color = scale_color[1:5]) +
+  scale_size(range = c(1,3))+
+  geom_point(aes(size = prop),
+               show.legend = F, color = scale_color[1:5]) +
+  geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white", 
+             color = scale_color[1:5],
+             size = 5,
+               hjust = "inward",
+               show.legend = F)+
+  scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+  geom_text(aes( x = 0, y = ds_estado_civil, label = ds_estado_civil), color = "black", size = 3, vjust = -2, hjust = 0)+
+  coord_cartesian(clip = "off", expand = T)+
+  theme(
+        plot.margin = unit(c(0,0,0,0), "cm"),
+        text = element_text(size = 10),
+        title = element_text(size = 12),
+    axis.text.y = element_blank())+
+  labs(title = "Estado Civil", 
+       x = "", y = ""))
+```
+
+#Socioeconomico I
+```{r}
+grid.3 <- por.genero + raca + estado.civil
+
+setwd("C:/rstats/soudapaz")
+Cairo::CairoSVG("grid.3", width = 8, height = 4)
+print(grid.3)     
+dev.off()
+```
+
+```{r instrucao, fig.width=8}
+(instrucao <- base.geral.militares %>% 
+  count(ds_grau_instrucao, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 2)*100,
+         ds_grau_instrucao = fct_reorder(ds_grau_instrucao, n )) %>% 
+  ggplot(aes(x = n, y = ds_grau_instrucao, color = ds_grau_instrucao)) +
+  scale_color_manual(values = scale_color)+
+  geom_segment(aes(xend = 0, yend = ds_grau_instrucao, size = prop),
+                 show.legend = F, color = scale_color[1:7]) +
+  scale_size(range = c(1,3))+
+    geom_point(aes(size = prop),
+               show.legend = F, color = scale_color[1:7]) +
+  geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white", 
+             color = scale_color[1:7],
+               hjust = "inward",
+               show.legend = F)+
+  geom_text(aes( x = 0, y = ds_grau_instrucao, label = ds_grau_instrucao), 
+            color = "black", size = 3, vjust = -1.5, hjust = 0)+
+  scale_x_continuous(labels = scales::comma_format(big.mark = "."))+
+coord_cartesian(clip = "off")+
+     theme(plot.margin = unit(c(0,0.5,0.1,0), "cm"),
+        text = element_text(size = 8),
+        title = element_text(size = 10),
+    axis.text.y = element_blank())+
+  labs(title = "Escolaridade", 
+       x = "", y = ""))
+```
+
+```{r idade}
+idade <- base.geral.militares %>% 
+  ggplot(aes(y = nr_idade_data_posse, x = 1)) + 
+  geom_violin(fill = scale_color[10])+
+  scale_y_continuous(breaks = seq(20, 80, 10))+
+  geom_hline(aes(yintercept = mean(base.geral.militares$nr_idade_data_posse)),
+                 lty = "dashed", color = "white")+
+  annotate(geom = "text", y = 54, x = .85, 
+           label = "Média = 50,7", size = 4, color = "white")+
+  coord_cartesian(clip = "off", expand = T)+
+  theme(text = element_text(size = 8),
+        title = element_text(size = 10),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank())+
+  labs(title = "Idade")
+```
+
+```{r}
+grid.4 <- instrucao + idade / plot_spacer() +
+  plot_annotation(theme = theme(plot.margin = unit(c(0,.2,0,0.2), "cm")))
+
+setwd("C:/rstats/soudapaz")
+Cairo::CairoSVG("grid.4", height = 5)
+print(grid.4)     
+dev.off()
+```
+
+# Região
+```{r regiao1}
+cand_geral <- brasil %>% 
+  count(regiao, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 2),
+         candidaturas = "gerais") 
+
+cand_militar <- base.geral.militares %>% 
+  count(regiao, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 2),
+         candidaturas = "militares") 
+
+candsregiao <- bind_rows(cand_militar, cand_geral)
+
+
+geom_label(aes(label = paste0(" ", prop, "%")), 
+               fill = "white", 
+               hjust = "inward",
+               )
+
+(plot.regiao <- candsregiao %>% 
+  mutate(regiao = fct_reorder(regiao, prop)) %>% 
+  ggplot(aes(x = prop, y = regiao, fill = candidaturas)) +
+  scale_fill_manual("Candidaturas", values = c(alpha(scale_color[1], .9), 
+                               alpha(scale_color[10], .9)),
+                    label = c("Gerais", "Policiais"),
+                    guide = guide_legend(reverse = T))+
+  geom_col(position = "dodge", width = .75) +
+  scale_x_continuous(labels = scales::percent_format())+
+  geom_text(aes(label = paste0(prop*100, "%")),
+                hjust = -.7,
+                size = 4,
+                fontface = "bold",
+#               color = "white",
+                position = position_dodge(width = 1))+
+  coord_cartesian(clip = "off", expand = T)+
+  theme(plot.margin = unit(c(.5,1.2,0.5,0.5), "cm"),
+        title = element_text(size = 10),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10),
+        text = element_text(size = 10),
+        legend.position = c(.7,.2),
+        legend.direction = "vertical"))
+```
+
+```{r}
+  setwd("C:/rstats/soudapaz")
+  Cairo::CairoSVG("plot.regiao")
+  print(plot.regiao)     
+  dev.off()
+```
+
+```{r regiao2}
+cand_geral_pref <- pref %>% 
+  count(regiao, sort = T) %>%
+  mutate(prop = round(n/sum(n), 2),
+         candidaturas = "gerais") 
+
+cand_militar_pref <- base.geral.militares %>%
+  filter(ds_cargo == "PREFEITO") %>% 
+  count(regiao, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 2),
+         candidaturas = "militares") # %>% adorn_totals()
+
+candsregiao_pref <- bind_rows(cand_militar_pref, cand_geral_pref)
+
+(plot.regiao.pref <- candsregiao_pref %>% 
+  mutate(regiao = fct_reorder(regiao, prop)) %>% 
+  ggplot(aes(x = prop, y = regiao, fill = candidaturas)) +
+  scale_fill_manual(values = c(scale_color[1], scale_color[10]))+
+  geom_col(position = "dodge", width = .5) +
+  scale_x_continuous(labels = scales::percent_format())+
+  coord_cartesian(clip = "off", expand = F)+    
+  geom_text(aes(label = paste0(prop*100, "%")),
+                hjust = "inward",
+#                color = "white",
+                position = position_dodge(width = 1))+
+  theme(plot.margin = unit(c(0,0,0.3,0), "cm"),
+                title = element_text(size = 6),
+        text = element_text(size = 8),
+    legend.position = "none")+
+  labs(title = "Prefeituras"))
+```
+
+
+
+
+
+```{r ver_regiao3}
+cand_geral_ver <- ver %>% 
+  count(regiao, sort = T) %>%
+  mutate(prop = round(n/sum(n), 2),
+         candidaturas = "gerais") 
+
+cand_militar_ver <- base.geral.militares %>%
+  filter(ds_cargo == "VEREADOR") %>% 
+  count(regiao, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 2),
+         candidaturas = "militares")
+
+candsregiao_ver <- bind_rows(cand_militar_ver, cand_geral_ver)
+
+(plot.regiao.ver <- candsregiao_ver %>% 
+  mutate(regiao = fct_reorder(regiao, prop)) %>% 
+  ggplot(aes(x = prop, y = regiao, fill = candidaturas)) +
+  scale_fill_manual(values = c(scale_color[1], scale_color[10]))+
+  geom_col(position = "dodge", width = .5) +
+  scale_x_continuous(labels = scales::percent_format())+
+  coord_cartesian(clip = "off", expand = F)+  
+  geom_text(aes(label = paste0(prop*100, "%")),
+                hjust = "inward",
+#                color = "white",
+                position = position_dodge(width = 1))+
+  theme(plot.margin = unit(c(.5,.2,.3,0), "cm"),
+        title = element_text(size = 6),
+        text = element_text(size = 8),
+        legend.position = "none")+
+  labs(title = "Câmaras Municipiais"))
+```
+
+```{r grid_regiaoagregado}
+grid.4 <- plot.regiao + (plot.regiao.pref/plot.regiao.ver)+
+  plot_annotation(title = "Candidaturas por região",
+                  subtitle = "Relação entre candidaturas gerais e militares",
+                  caption = caption_text,
+                  theme = theme(plot.margin = unit(c(.1,.1, .1, .1), "cm")))
+  
+  setwd("C:/rstats/soudapaz")
+  Cairo::CairoSVG("grid.4")
+  print(grid.4)     
+  dev.off()
+
+```
+
+
+```{r geral_estado}
+cand_uf <- brasil %>% 
+  count(sg_uf, sort = T) %>%
+  mutate(prop = round(n/sum(n), 3),
+         candidaturas = "gerais") 
+
+cand_militar_uf <- base.geral.militares %>%
+  count(sg_uf, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 3),
+         candidaturas = "militares")
+
+candsuf <- bind_rows(cand_militar_uf, cand_uf)
+
+(p4 <- candsuf %>% 
+  mutate(sg_uf = fct_reorder(sg_uf, prop)) %>% 
+  ggplot(aes(x = prop, y = sg_uf, fill = candidaturas)) + 
+  geom_col(position = "dodge", width = .7) +
+  scale_fill_manual(values = c(scale_color[1], scale_color[11]),
+                    guide = guide_legend(reverse = T))+  
+  scale_x_continuous(limits = c(0, .19), labels = scales::percent_format())+
+  geom_text(aes(label = paste0(prop*100, "%")),
+                size = 3,
+                hjust = - 0.2,
+                position = position_dodge(width = 1))+
+  labs(title = "Todos os cargos", subtitle = "Prefeitura + Vice-prefeitura + Vereadores")+
+  theme(
+        plot.margin = unit(c(.5, 0.2, 0,0), "cm"),
+        legend.position = c(.8, .2),
+        legend.justification = c(0.5,0.5),
+        legend.direction = "vertical",
+        text = element_text(size = 8),
+        title = element_text(size = 10)))
+```       
+
+```{r ver_estado}
+cand_uf_pref <- pref %>% 
+  filter(ds_cargo == "PREFEITO") %>% 
+  count(sg_uf, sort = T) %>%
+  mutate(prop = round(n/sum(n), 3),
+         candidaturas = "gerais") 
+
+cand_militar_uf_pref <- base.geral.militares %>%
+  filter(ds_cargo == "PREFEITO") %>% 
+  count(sg_uf, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 3),
+         candidaturas = "militares")
+
+candsuf_pref <- bind_rows(cand_militar_uf_pref, cand_uf_pref)
+
+(p5 <- candsuf_pref %>% 
+  mutate(sg_uf = fct_reorder(sg_uf, prop)) %>% 
+  ggplot(aes(x = prop, y = sg_uf, fill = candidaturas)) + 
+  geom_col(position = "dodge", width = .7) +
+  scale_x_continuous(limits = c(0, .18), labels = scales::percent_format())+
+  scale_fill_manual(values = c(scale_color[1], scale_color[11]))+  
+  coord_cartesian(clip = "off", expand = F)+
+  geom_text(aes(label = paste0(prop*100, "%")),
+                size =  2,
+                hjust = - 0.2,
+                position = position_dodge(width = 1))+
+  labs(title = "Prefeituras")+
+  theme(
+        plot.margin = unit(c(.5, .5,0,0), "cm"),
+        legend.position = "none",
+        text = element_text(size = 8),
+        title = element_text(size = 10)))
+```
+
+
+```{r ver_estado}
+cand_uf_ver <- ver %>% 
+  count(sg_uf, sort = T) %>%
+  mutate(prop = round(n/sum(n), 3),
+         candidaturas = "gerais") 
+
+cand_militar_uf_ver <- base.geral.militares %>%
+  filter(ds_cargo == "VEREADOR") %>% 
+  count(sg_uf, sort = T) %>% 
+  mutate(prop = round(n/sum(n), 3),
+         candidaturas = "militares")
+
+candsuf_ver <- bind_rows(cand_militar_uf_ver, cand_uf_ver)
+
+(p6 <- candsuf_ver %>% 
+  mutate(sg_uf = fct_reorder(sg_uf, prop)) %>% 
+  ggplot(aes(x = prop, y = sg_uf, fill = candidaturas)) + 
+  geom_col(position = "dodge", width = .7) +
+  scale_x_continuous(limits = c(0, .18), labels = scales::percent_format())+
+  scale_fill_manual(values = c(scale_color[1], scale_color[11]))+  
+  coord_cartesian(clip = "off", expand = F)+
+  geom_text(aes(label = paste0(prop*100, "%")),
+                size = 2,
+                hjust = - 0.2,
+                position = position_dodge(width = 1))+
+  labs(title = "Câmaras Municipais")+
+  theme(
+        plot.margin = unit(c(.5,.5,0,0), "cm"),
+        legend.position = "none",
+        text = element_text(size = 8),
+        title = element_text(size = 10)))
+```
+
+
+```{r grid_estado}
+grid_estado <- p4 + ( p5 / p6)
+
+grid.5 <- grid_estado + plot_annotation(
+  title = 'Porporção de Candidaturas gerais e militares por estado',
+  subtitle = "Relação entre todas as candadituras e as militares",
+  caption = caption_text,
+  theme = theme(plot.margin = unit(c(.5,0.5,.5,0.5), "cm"))
+)
+```
+
+```{r}
+  setwd("C:/rstats/soudapaz")
+  Cairo::CairoSVG("grid.5", width = 7.5, height = 9)
+  print(grid.5)     
+  dev.off()
+```
+
+
+```{r}
+cand.mun <- base.geral.militares %>% 
+  count(nm_ue, code_muni = id_municipio, ds_cargo, sort = T) %>%
+  pivot_wider(names_from = ds_cargo, values_from = n) %>% 
+  mutate(VEREADOR = replace_na(VEREADOR, 0),
+         `VICE-PREFEITO` = replace_na(`VICE-PREFEITO`, 0),
+         PREFEITO = replace_na(PREFEITO, 0),
+           Total = rowSums(.[3:5], na.rm = T)) %>% 
+  arrange(desc(VEREADOR))
+
+cand.mun.base <- base.geral.militares %>% 
+  count(nm_ue, sg_ue, pop_est,  ds_cargo, sort = T) %>%
+  pivot_wider(names_from = ds_cargo, values_from = n) %>% 
+  mutate(VEREADOR = replace_na(VEREADOR, 0),
+         `VICE-PREFEITO` = replace_na(`VICE-PREFEITO`, 0),
+         PREFEITO = replace_na(PREFEITO, 0),
+           Total = rowSums(.[4:6], na.rm = T)) %>% 
+  arrange(desc(VEREADOR))
+
+cand.mun.base <- cand.mun.base %>% 
+  left_join(assentos, by = c("sg_ue" = "sigla_ue")) %>% 
+  select(1:4, everything(), qtde_vagas, -nome_ue, - descricao_cargo) %>% 
+  mutate(cand_por_vaga = VEREADOR/qtde_vagas) %>% 
+  arrange(desc(cand_por_vaga))
+
+write.csv2(cand.mun.base, "qt_cand_mun(revisado).csv", fileEncoding = "ISO-8859-1")
+```
+
+# Descritiva municipio
+```{r}
+base::summary(cand.mun.base$Total)
+```
+
+
+```{r mapa}
+shapemun <- shapemun %>% 
+  cbind(.,sf::st_coordinates(sf::st_centroid(.$geom)))
+
+cand.mun.shape <- shapemun %>%
+  mutate(code_muni = as.character(code_muni)) %>% 
+  full_join(cand.mun)
+```
+
+```{r}
+map <- ggplot(cand.mun.shape)+
+  geom_sf(aes(fill = Total), colour = alpha("gray", .7), 
+          lwd = .5, lty = 3) +
+  scale_fill_gradient("", 
+                      low = scale_color[13], 
+                      high = muted(scale_color[10]), 
+                      na.value = "#DCDCDC") +
+  geom_point(aes(x = X, y = Y, size = Total), shape = 19, 
+             alpha = .2, color =  "#1C361B") +
+  scale_size(range = c(0, 8), guide = guide_legend(reverse = T, legend.box.background = "transparent"))+
+  geom_sf(data=shapeestado, fill=NA, color = "#333333", lwd = .5)+
+  theme_map()  +
+  theme(legend.position = c(0.15, .35),
+        legend.justification = c(.5, .5),
+        legend.box = "horizontal",
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        plot.margin = unit(c(.5,.5,.5,.5), "cm"),
+        panel.background = element_rect(fill = "#EFEFEF", color = "#EFEFEF"),
+        plot.background = element_rect(fill = "#EFEFEF", color = "#EFEFEF"))
+```
+
+
+```{r}
+setwd("C:/rstats/soudapaz")
+Cairo::CairoSVG("map.svg", )
+print(map)
+dev.off()
+```
+
+
+```{r tamanho da populacao}
+table.pop.militares <- base.geral.militares %>% 
+  count(classe_pop, ds_cargo, name = "qt") %>%
+  pivot_wider(names_from = ds_cargo, values_from = qt) %>% 
+  mutate(Total = rowSums(.[2:4], na.rm = T), 
+         Perc_Total = round(Total/sum(Total), 3)*100,
+         ambito = "Militar",
+         classe_pop = str_remove(classe_pop, "\\d - ")) %>%
+  select(População = classe_pop, 2, 4,3, 5:6) %>%
+  janitor::clean_names()
+
+
+colnames(table.pop.militares) <- c("Faixa populacional", "Prefeito", "Vice-prefeito", "Vereador", "Total", "% do Total")
+
+table.pop.militares %>% 
+  kable() %>% 
+  kable_classic(full_width = F)
+
+# formattable(table.pop.militares, 
+#             list(prefeito = normalize_bar(color = alpha(scale_color[10], .3)),
+#                  vice_prefeito = normalize_bar(color = alpha(scale_color[10], .3)),
+#                  vereador = normalize_bar(color = alpha(scale_color[10], .3)),
+#                   total = normalize_bar(color = alpha(scale_color[10], .3))))
+
+table.pop.brasil <- brasil %>% 
+  count(classe_pop, ds_cargo, name = "qt") %>%
+  pivot_wider(names_from = ds_cargo, values_from = qt) %>% 
+  mutate(Total = rowSums(.[2:4], na.rm = T), 
+         Perc_Total = round(Total/sum(Total), 3)*100,
+         ambito = "Geral") %>%
+  select(População = classe_pop, 2, 4,3, 5:7) %>% 
+  janitor::clean_names()
+
+formattable(table.pop.brasil, 
+            list(prefeito = normalize_bar(),
+                 vice_prefeito = normalize_bar(),
+                 vereador = normalize_bar(),
+                  total = normalize_bar()))
+
+table.pop.export <- table.pop.militares %>% 
+  bind_rows(table.pop.brasil)
+```
+
+# Bens declarados
+```{r}
+# criar id
+base.geral.militares <- base.geral.militares %>% 
+  mutate(id = paste0(sg_ue, "_", sq_candidato)) 
+
+bens_sel <- bens_sel %>% 
+  mutate(id = paste0(sg_ue, "_", sq_candidato))
+
+bens_sel <- bens_sel %>% 
+  group_by(id) %>% 
+  summarise(bens = sum(vr_bem_candidato)) %>% 
+  arrange(desc(bens)) %>% 
+  mutate(valores = scales::dollar(bens, big.mark = ".", prefix = "R$ "))
+
+# # para depois de filtrar sequencia dos candidatos
+# bens_candidatos <- bens %>% 
+#   filter(SQ_CANDIDATO %in% sq_cand$value) %>% 
+#   group_by(SQ_CANDIDATO, SG_UE) %>% 
+#   summarise(bens = sum(VR_BEM_CANDIDATO)) %>% 
+#   arrange(desc(bens)) %>% 
+#   mutate(valores = scales::dollar(bens, big.mark = ".", prefix = "R$ ")) %>% 
+#   janitor::clean_names()
+
+bens_join <- bens_sel %>%  
+  inner_join(base.geral.militares, by = "id")
+
+bens_join <- bens_join %>% 
+  arrange(desc(bens)) %>% 
+  select(id, nm_urna_candidato, ds_cargo, sg_partido, ds_ocupacao, nm_ue, sg_uf, bens, valores)
+
+bens_join <- bens_join %>% 
+  mutate(atualização = "19-10-2020")
+
+bens_join %>% head()
+
+write.csv2(bens_join, "bens.declarados.csv", fileEncoding = "ISO-8859-1")
+
+# http://divulgacandcontas.tse.jus.br/divulga/#/candidato/2020/2030402020/47872/130000878355/bens - cabo anízio
+```
+
+# bens
+```{r}
+base::summary(bens_join$bens)
+
+# base.geral.militares %>%
+#           count(ds_situacao_candidatura) %>% 
+#           mutate(per = round(n/sum(n)*100, 1)) %>% 
+#           adorn_totals()
+
+table.bens <- bens_join %>% 
+  filter(bens < 50000000) %>%
+  mutate(faixa.bens = case_when(bens <= 50000 ~ "Até 50 mil",
+                                bens > 50000 & bens <= 100000 ~ "De 50 até 100 mil",
+                                bens > 100000 & bens <= 500000 ~ "De 100 a 500 mil",
+                                bens > 500000 & bens <= 1000000 ~ "De 500 mil a 1 milhão",
+                                bens > 1000000 & bens <= 2000000 ~ "De 1 a 2 milhões",
+                                bens > 2000000 ~ "Mais de 2 millhões",
+                                TRUE ~ "Não conhecido")) %>%
+  mutate(faixa.bens = fct_relevel(faixa.bens, levels = c("Até 50 mil","De 50 até 100 mil", "De 100 a 500 mil", 
+                                                         "De 500 mil a 1 milhão", "De 1 a 2 milhões", "Mais de 2 millhões", "Não conhecido" ))) %>% 
+          count(faixa.bens) %>% 
+          mutate(per = round(n/sum(n)*100, 1)) %>% 
+          adorn_totals() %>% 
+          kable() %>% 
+          kable_classic(full_width = F)
+
+bens_join %>% 
+  filter(bens < 4000000) %>% 
+  ggplot(aes(bens))+ 
+  geom_histogram(bins = 3000)+
+  scale_x_continuous(labels = scales::dollar_format())
+```
+
+# Receitas
+```{r}
+cpf <- base.geral.militares %>% 
+  pull(nr_cpf_candidato)
+
+receitas <- receitas %>% 
+  clean_names()
+
+receitas.militares <- receitas %>%
+  filter(nr_cpf_candidato %in% cpf)
+
+receitas.militares <- base.geral.militares %>% 
+  right_join(receitas.militares, by = "nr_cpf_candidato") 
+
+receitas.militares <- receitas.militares %>%
+  count(nr_cpf_candidato, nm_urna_candidato, nm_candidato.x, ds_ocupacao, ds_cargo.x,  nm_ue.x, sg_uf.x, sg_partido.x, 
+        ds_fonte_receita, ds_origem_receita, vr_receita) %>% 
+  arrange(desc(vr_receita)) %>% 
+  group_by(nr_cpf_candidato) %>% 
+  mutate(total_receitas = sum(vr_receita)) %>% 
+  arrange(desc(total_receitas)) %>% 
+  ungroup()
+
+write.csv2(receitas.militares, "receitas.militares_2.csv", fileEncoding = "ISO-8859-1")
+```
+
+O valor encontrado condiz com reportagens publicadas pelo [G1](https://g1.globo.com/politica/eleicoes/2020/eleicao-em-numeros/noticia/2020/10/01/eleicoes-2020-terao-o-maior-numero-de-candidatos-militares-dos-ultimos-16-anos.ghtml) e pelo [UOL](https://noticias.uol.com.br/eleicoes/2020/09/29/mais-de-6700-policiais-e-militares-se-lancam-candidatos-psl-lidera-casos.htm)  
+
+# Guardas
+```{r}
+guardas <- brasil %>% 
+filter(str_detect(nm_urna_candidato, "GUARDA"))
+
+# 14 casos
+guard_mun <- brasil %>% 
+filter(str_detect(nm_urna_candidato, "GUARDA MUN"))
+
+guard_est <- brasil %>% 
+filter(str_detect(nm_urna_candidato, "GUARDA E"))
+
+guard_mun %>% pull(nm_urna_candidato)
+
+write.csv2(guardas, "guardas.csv", fileEncoding = "ISO-8859-1")
+
+# 14 casos
+write.csv2(guard_mun, "guardas_mun.csv", fileEncoding = "ISO-8859-1")
+
+
+```
+
+# Aptos e inaptos
+```{r}
+brasil %>% 
+  count(ds_situacao_candidatura, ds_detalhe_situacao_cand)
+
+base.geral.militares %>% 
+  count(ds_situacao_candidatura) %>% 
+  mutate(perc = n/sum(n)*100)
+  
+# count(ds_situacao_candidatura, ds_detalhe_situacao_cand)
+
+list.of.files
+
+```
+
+
+# Vigilantes
+```{r}
+brasil %>% 
+  filter(str_detect(ds_ocupacao, "VIGILANTE")) 
+
+ # A tibble: 4,732 x 68
+ #   dt_geracao hh_geracao ano_eleicao cd_tipo_eleicao nm_tipo_eleicao nr_turno cd_eleicao ds_eleicao dt_eleicao tp_abrangencia sg_uf regiao sg_ue nm_ue
+ #   <chr>      <time>           <dbl>           <dbl> <chr>              <dbl>      <dbl> <chr>      <chr>      <chr>          <chr> <chr>  <chr> <chr>
+ # 1 02/11/2020 21:13:02          2020               2 ELEIÇÃO ORDINÁ~        1        426 Eleições ~ 15/11/2020 MUNICIPAL      SP    Sudes~ 63576 COSM~
+ # 2 02/11/2020 21:13:02          2020               2 ELEIÇÃO ORDINÁ~        1        426 Eleições ~ 15/11/2020 MUNICIPAL      SP    Sudes~ 62405 PAUL~
+ # 3 02/11/2020 21:13:02          2020               2 ELEIÇÃO ORDINÁ~        1        426 Eleições ~ 15/11/2020 MUNICIPAL      MG    Sudes~ 52191 SÃO ~
+ # 4 02/11/2020 21:13:02          2020               2 ELEIÇÃO ORDINÁ~        1        426 Eleições ~ 15/11/2020 MUNICIPAL      SP    Sudes~ 63053 CAPÃ~
+```
+
