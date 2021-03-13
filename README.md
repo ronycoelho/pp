@@ -1,3 +1,5 @@
+----------------------------
+
 - [Dados abertos Câmara](https://dadosabertos.camara.leg.br/swagger/api.html)
 
 - [Quem são os deputados](https://www.camara.leg.br/deputados/quem-sao)
@@ -13,4 +15,6 @@
 - [Elas no congresso](https://www.elasnocongresso.com.br/ranking)
 
 
+----------------------------
 
+- [CNAE - Cadastro Nacional de Entidades Ambientalistas](http://cnea.mma.gov.br/)
