@@ -14,7 +14,7 @@
 
 - [Elas no congresso](https://www.elasnocongresso.com.br/ranking)
 
-
+- [Composição das Comissões Permanentes](https://www2.camara.leg.br/atividade-legislativa/comissoes/comissoes-permanentes/membros-de-todas-as-comissoes)
 
 ----------------------------
 
