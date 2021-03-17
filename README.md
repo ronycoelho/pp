@@ -10,9 +10,10 @@
 
 - [Plataforma Parlamentar - ME](http://transferenciasabertas.planejamento.gov.br/QvAJAXZfc/opendoc.htm?document=painelcidadao.qvw&lang=en-US&host=QVS%40srvbsaiasprd01&anonymous=true)
 
-- [Perfil Parlamentar - Parlametria](https://perfil.parlametria.org/)
+- [Parlametria/Perfil Parlamentar](https://perfil.parlametria.org/)
 
 - [Elas no congresso](https://www.elasnocongresso.com.br/ranking)
+
 
 
 ----------------------------
