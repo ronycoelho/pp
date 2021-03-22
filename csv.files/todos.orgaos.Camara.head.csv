@@ -1,7 +1,0 @@
-"";"id";"uri";"sigla";"nome";"apelido";"codTipoOrgao";"tipoOrgao";"nomePublicacao"
-"1";4;"https://dadosabertos.camara.leg.br/api/v2/orgaos/4";"MESA";"Mesa Diretora da Câmara dos Deputados";"Mesa Diretora";1;"Comissão Diretora";"Mesa Diretora"
-"2";51;"https://dadosabertos.camara.leg.br/api/v2/orgaos/51";"Judiciário";"Judiciário";"Judiciário";50000;"Órgão do Poder Judiciário";"Judiciário"
-"3";57;"https://dadosabertos.camara.leg.br/api/v2/orgaos/57";"MPU";"MINISTÉRIO PÚBLICO DA UNIÃO";"MINISTÉRIO PÚBLICO DA UNIÃO";81007;"MPU - Ministério Público da União";"MINISTÉRIO PÚBLICO DA UNIÃO"
-"4";60;"https://dadosabertos.camara.leg.br/api/v2/orgaos/60";"PR";"Presidência da República";"PRESIDÊNCIA DA REPÚBLICA";30000;"Órgão do Poder Executivo";"PRESIDÊNCIA DA REPÚBLICA"
-"5";78;"https://dadosabertos.camara.leg.br/api/v2/orgaos/78";"SF";"Senado Federal";"Senado Federal";40000;"Órgão do Poder Legislativo";"Senado Federal"
-"6";79;"https://dadosabertos.camara.leg.br/api/v2/orgaos/79";"SFCMRC";"Senado Federal (Comissão Mista - Art 142 e 143 do Regimento Comum)";"Senado Federal (CMRC)";22000;"Órgão do Senado Federal";"Senado Federal (CMRC)"
