@@ -16,6 +16,8 @@
 
 - [Composição das Comissões Permanentes](https://www2.camara.leg.br/atividade-legislativa/comissoes/comissoes-permanentes/membros-de-todas-as-comissoes)
 
+- [Líderes e Bancadas](https://www.camara.leg.br/deputados/bancada-atual)
+
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
