@@ -18,6 +18,7 @@
 
 - [Líderes e Bancadas](https://www.camara.leg.br/deputados/bancada-atual)
 
+- [Ministros de Estado](https://www.gov.br/planalto/pt-br/conheca-a-presidencia/ministros)
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
