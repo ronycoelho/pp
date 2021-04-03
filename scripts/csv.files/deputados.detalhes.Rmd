@@ -1,0 +1,47 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# dados abertos
+
+```{r}
+df <- "https://raw.githubusercontent.com/ronycoelho/pp/main/csv.files/deputados.em.exercicio.12.03.21.csv"
+
+deputados <- read_csv(df, locale(encoding = "ISO-8859-1"), col_names = T, col_types = NULL)
+
+deputados$id
+```
+
+
+```{r}
+deputados.atuais <-  jsonlite::fromJSON("https://dadosabertos.camara.leg.br/api/v2/deputados")
+
+deputados.atuais <- deputados.atuais$dados
+
+
+deputados.atuais$id
+```
+
+# Deputados detalhes
+```{r}
+link.detalhes <- "https://dadosabertos.camara.leg.br/api/v2/deputados/{id}"
+
+dep.detalhes <- function(vector.id){
+  data <- data.frame()
+  for(i in 1:length(vector.id)){
+  print(i)
+  id <- vector[i]  
+  link <- sprintf("https://dadosabertos.camara.leg.br/api/v2/deputados/%s",id)  
+  dep <-  jsonlite::fromJSON(link)
+  dep <-  bind_cols(dep$dados) %>% janitor::clean_names()
+  data <- bind_cols(bind_rows(data, dep))
+  }
+  return(data)
+}
+
+vector <- deputados.atuais$id
+
+deputados.detalhes <- dep.detalhes(vector[c(1:10)])
+```
+
