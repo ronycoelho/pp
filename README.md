@@ -6,6 +6,8 @@
 
 - [Parlamentares em exercício](https://www.congressonacional.leg.br/parlamentares/em-exercicio)
 
+- [Resultados Legislativos](https://www.camara.leg.br/transparencia/resultados-legislativos?ano=2021#resultados-legislativos)
+
 - [Radar do Congresso](https://radar.congressoemfoco.com.br/governismo/camara)
 
 - [Plataforma Parlamentar - ME](http://transferenciasabertas.planejamento.gov.br/QvAJAXZfc/opendoc.htm?document=painelcidadao.qvw&lang=en-US&host=QVS%40srvbsaiasprd01&anonymous=true)
