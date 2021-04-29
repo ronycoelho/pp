@@ -2,6 +2,8 @@
 
 - [Dados abertos Câmara](https://dadosabertos.camara.leg.br/swagger/api.html)
 
+- [Dados abertos Senado](https://www12.senado.leg.br/dados-abertos/conjuntos?grupo=projetos-e-materias&portal=legislativo) 
+
 - [Quem são os deputados](https://www.camara.leg.br/deputados/quem-sao)
 
 - [Parlamentares em exercício](https://www.congressonacional.leg.br/parlamentares/em-exercicio)
