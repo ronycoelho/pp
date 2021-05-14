@@ -24,9 +24,10 @@
 
 - [Ministros de Estado](https://www.gov.br/planalto/pt-br/conheca-a-presidencia/ministros)
 
-https://www2.camara.leg.br/deputados/pesquisa/informacoes-eleitorais
+- [Informações eleitorais dos deputados](https://www2.camara.leg.br/deputados/pesquisa/informacoes-eleitorais)
 
-https://cepespdata.io/
+- [CEPESP-FGV](https://cepespdata.io/)
+- 
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
@@ -38,3 +39,7 @@ https://cepespdata.io/
 - [congressbr](https://github.com/duarteguilherme/congressbr)
 
 - [electionsBR](http://electionsbr.com/)
+
+----------------------------
+- [Laranjáveis](https://escoladedados.org/tutoriais/laranjaveis-descobrindo-o-custo-por-voto-das-candidaturas/)
+
