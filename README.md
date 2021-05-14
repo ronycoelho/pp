@@ -40,6 +40,13 @@
 
 - [electionsBR](http://electionsbr.com/)
 
+camara.leg
+
+bRasilLegis
+
+devtools::install_github('analytics-ufcg/rcongresso')
+
+
 ----------------------------
 - [Laranjáveis](https://escoladedados.org/tutoriais/laranjaveis-descobrindo-o-custo-por-voto-das-candidaturas/)
 
