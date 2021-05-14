@@ -27,7 +27,9 @@
 - [Informações eleitorais dos deputados](https://www2.camara.leg.br/deputados/pesquisa/informacoes-eleitorais)
 
 - [CEPESP-FGV](https://cepespdata.io/)
-- 
+
+- sigalei
+
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
