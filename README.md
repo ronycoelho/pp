@@ -46,6 +46,7 @@ bRasilLegis
 
 devtools::install_github('analytics-ufcg/rcongresso')
 
+cepespR
 
 ----------------------------
 - [Laranjáveis](https://escoladedados.org/tutoriais/laranjaveis-descobrindo-o-custo-por-voto-das-candidaturas/)
