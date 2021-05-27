@@ -28,6 +28,8 @@
 
 - [CEPESP-FGV](https://cepespdata.io/)
 
+- [Dados abertos Câmara - Projetos da Comunidade](https://dadosabertos.camara.leg.br/community/blogger.html)
+
 - sigalei
 
 ----------------------------
