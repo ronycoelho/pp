@@ -32,6 +32,12 @@
 
 - sigalei
 
+- [https://labhackercd.leg.br/](https://labhackercd.leg.br/)
+
+- [Retórica](https://github.com/davi-moreira/Retorica/blob/master/r/ExpAgendVMVA.R) 
+
+
+
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
