@@ -12,7 +12,7 @@
 
 - [Pauta Eletrônica](https://pauta.camara.leg.br/pautaeletronica/comissoes.html)  
 
-- [Radar do Congresso](https://radar.congressoemfoco.com.br/governismo/camara)
+- [Radar do Congresso - Congresso em Foco](https://radar.congressoemfoco.com.br/governismo/camara)
 
 - [Plataforma Parlamentar - ME](http://transferenciasabertas.planejamento.gov.br/QvAJAXZfc/opendoc.htm?document=painelcidadao.qvw&lang=en-US&host=QVS%40srvbsaiasprd01&anonymous=true)
 
