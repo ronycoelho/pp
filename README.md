@@ -38,6 +38,8 @@
 
 - [Retórica](https://github.com/davi-moreira/Retorica/blob/master/r/ExpAgendVMVA.R) 
 
+- [ÍNDICE DE APROVAÇÃO DOS PRESIDENTES DO BRASIL](https://data.jota.info/aprovacao/)
+
 
 
 ----------------------------
