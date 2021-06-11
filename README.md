@@ -67,3 +67,4 @@ pesqELe - https://github.com/pindograma/pesqEle
 ----------------------------
 - [Laranjáveis](https://escoladedados.org/tutoriais/laranjaveis-descobrindo-o-custo-por-voto-das-candidaturas/)
 
+- [IPD](https://ipdquaest.com.br/)
