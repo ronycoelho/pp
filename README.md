@@ -68,3 +68,8 @@ pesqELe - https://github.com/pindograma/pesqEle
 - [Laranjáveis](https://escoladedados.org/tutoriais/laranjaveis-descobrindo-o-custo-por-voto-das-candidaturas/)
 
 - [IPD](https://ipdquaest.com.br/)
+
+----------------------------
+[Monitor Nuclear](https://nucleo.jor.br/monitor/)
+
+[Weber, o bot de política](https://twitter.com/weber_bot)
