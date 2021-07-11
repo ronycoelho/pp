@@ -40,7 +40,7 @@
 
 - [ÍNDICE DE APROVAÇÃO DOS PRESIDENTES DO BRASIL](https://data.jota.info/aprovacao/)
 
-
+- [Regimento Interno da Câmara dos Deputados](https://livraria.camara.leg.br/regimento-interno-21)
 
 ----------------------------
 
