@@ -73,3 +73,5 @@ pesqELe - https://github.com/pindograma/pesqEle
 [Monitor Nuclear](https://nucleo.jor.br/monitor/)
 
 [Weber, o bot de política](https://twitter.com/weber_bot)
+
+https://educacaoadistancia.camara.leg.br/site/
