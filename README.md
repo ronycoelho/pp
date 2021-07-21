@@ -8,7 +8,7 @@
 
 - [Parlamentares em exercício](https://www.congressonacional.leg.br/parlamentares/em-exercicio)
 
-- [Resultados Legislativos](https://www.camara.leg.br/transparencia/resultados-legislativos?ano=2021#resultados-legislativos)
+- [Resultados Legislativos](https://www.camara.leg.br/transparencia/resultados-legislativos?ano=2021#resultados-legislativos) [[2]](https://www.camara.leg.br/transparencia/resultados-legislativos)
 
 - [Pauta Eletrônica](https://pauta.camara.leg.br/pautaeletronica/comissoes.html)  
 
