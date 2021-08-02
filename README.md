@@ -75,3 +75,5 @@ pesqELe - https://github.com/pindograma/pesqEle
 [Weber, o bot de política](https://twitter.com/weber_bot)
 
 https://educacaoadistancia.camara.leg.br/site/
+
+[Quanto sua cidade vai ganhar no Orçamento 2021](https://www.camara.leg.br/internet/agencia/infograficos-html5/veja-quanto-sua-cidade-vai-ganhar-no-orcamento-2021/index.html)
