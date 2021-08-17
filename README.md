@@ -42,6 +42,8 @@
 
 - [Regimento Interno da Câmara dos Deputados](https://livraria.camara.leg.br/regimento-interno-21)
 
+- [Bancada da Eleição 2018 - 1988](https://www.camara.leg.br/deputados/bancada-na-eleicao)
+
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
