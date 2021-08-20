@@ -44,6 +44,8 @@
 
 - [Bancada da Eleição 2018 - 1988](https://www.camara.leg.br/deputados/bancada-na-eleicao)
 
+- [Banco de Dados Legislativos do CEBRAP](https://bancodedadoslegislativos.com.br/index.php)
+- 
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
