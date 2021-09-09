@@ -52,6 +52,8 @@
 
 - [CNAE - Cadastro Nacional de Entidades Ambientalistas](http://cnea.mma.gov.br/)
 
+- [PROLEGIS](https://www2.camara.leg.br/a-camara/estruturaadm/mesa/segundavice/interacao-legislativa/prolegis)
+
 ----------------------------
 
 - [congressbr](https://github.com/duarteguilherme/congressbr)
