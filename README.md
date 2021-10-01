@@ -48,11 +48,13 @@
 
 - [PROLEGIS](https://www2.camara.leg.br/a-camara/estruturaadm/mesa/segundavice/interacao-legislativa/prolegis)
 
+- [DivulgaCand](https://divulgacandcontas.tse.jus.br/divulga/#/)
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
 
 - [CNAE - Cadastro Nacional de Entidades Ambientalistas](http://cnea.mma.gov.br/)
+
 
 
 ----------------------------
