@@ -49,6 +49,8 @@
 - [PROLEGIS](https://www2.camara.leg.br/a-camara/estruturaadm/mesa/segundavice/interacao-legislativa/prolegis)
 
 - [DivulgaCand](https://divulgacandcontas.tse.jus.br/divulga/#/)
+
+- [https://normas.leg.br/busca](https://normas.leg.br/busca)
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
