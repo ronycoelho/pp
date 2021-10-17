@@ -51,6 +51,9 @@
 - [DivulgaCand](https://divulgacandcontas.tse.jus.br/divulga/#/)
 
 - [https://normas.leg.br/busca](https://normas.leg.br/busca)
+
+- [Banco de Dados Legislativos do CEBRAP](https://bancodedadoslegislativos.com.br/index.php)
+
 ----------------------------
 
 - [Mapa das Organizações da Sociedade Civil](https://mapaosc.ipea.gov.br/resultado-consulta.html)
